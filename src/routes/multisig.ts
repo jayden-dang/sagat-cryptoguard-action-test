@@ -94,12 +94,13 @@ multisigRouter.post('/', async (c) => {
     const members = await tx
       .insert(SchemaMultisigMembers)
       .values(
-        parsedPubKeys.map((key) => ({
+        parsedPubKeys.map((key, index) => ({
           multisigAddress: msig.address,
           publicKey: key.toBase64(),
           weight:
             weights[addresses.findIndex((addr) => addr === key.toSuiAddress())],
           isAccepted: key.toSuiAddress() === creatorPubKey.toSuiAddress(),
+          order: index,
         })),
       )
       .returning();

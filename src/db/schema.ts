@@ -57,6 +57,8 @@ const multisigMembers = pgTable(
     weight: integer('weight').default(1).notNull(),
     // Whether the member has accepted the invitations
     isAccepted: boolean('is_accepted').default(false).notNull(),
+    // order of the m
+    order: integer('order').notNull(),
   },
   // We only allow a pub key once per multisig address
   (table) => [

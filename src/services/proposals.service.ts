@@ -51,7 +51,6 @@ export const getProposalsByMultisigAddress = async (
       ),
     );
 
-  // TODO: fix type.
   const proposals: Record<number, ProposalWithSignatures> = {};
 
   for (const proposal of proposalsWithSignatures) {

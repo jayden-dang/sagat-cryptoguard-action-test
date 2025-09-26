@@ -3,6 +3,7 @@ import addressesRouter from './routes/addresses';
 import multisigRouter from './routes/multisig';
 import { ValidationError } from './errors';
 import proposalsRouter from './routes/proposals';
+import authRouter from './routes/auth';
 
 const app = new Hono();
 
@@ -11,6 +12,7 @@ app.get('/', (c) => {
   return c.text('Multisig API is up and running!');
 });
 
+app.route('/auth', authRouter);
 app.route('/addresses', addressesRouter);
 app.route('/multisig', multisigRouter);
 app.route('/proposals', proposalsRouter);

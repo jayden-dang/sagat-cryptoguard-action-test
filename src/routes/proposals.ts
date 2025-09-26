@@ -10,7 +10,6 @@ import { suiClient } from '../utils/client';
 import {
   ProposalStatus,
   proposalStatusFromString,
-  ProposalWithSignatures,
   SchemaProposals,
   SchemaProposalSignatures,
 } from '../db/schema';
@@ -145,11 +144,11 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 
   const proposal = await getProposalById(parseInt(proposalId));
 
-  if (!(await isMultisigMember(proposal.multisigAddress, publicKey)))
-    throw new ValidationError('Not a member of the multisig');
-
   if (proposal.status !== ProposalStatus.PENDING)
     throw new ValidationError('Proposal is not pending');
+
+  if (!(await isMultisigMember(proposal.multisigAddress, publicKey)))
+    throw new ValidationError('Not a member of the multisig');
 
   await validatePersonalMessage(
     publicKey,

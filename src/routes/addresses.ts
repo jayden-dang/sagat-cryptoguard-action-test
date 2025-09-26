@@ -43,4 +43,5 @@ addressesRouter.get('/:address', async (c) => {
 
   return c.json(addr);
 });
+
 export default addressesRouter;

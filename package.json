@@ -13,6 +13,7 @@
     "dataloader": "^2.2.3",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.9.8",
+    "jose": "^6.1.0",
     "pg": "^8.11.0"
   },
   "devDependencies": {
