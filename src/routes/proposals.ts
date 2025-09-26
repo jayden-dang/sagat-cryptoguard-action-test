@@ -17,7 +17,10 @@ import {
 import { db } from '../db';
 import { parsePublicKey } from '../utils/pubKey';
 import { fromBase64 } from '@mysten/sui/utils';
-import { getProposalById } from '../services/proposals.service';
+import {
+  getProposalById,
+  getProposalsByMultisigAddress,
+} from '../services/proposals.service';
 import { validatePersonalMessage } from '../services/addresses.service';
 import { and, eq } from 'drizzle-orm';
 
@@ -69,6 +72,7 @@ proposalsRouter.post('/', async (c) => {
         digest: await proposedTransaction.getDigest(),
         transactionBytes,
         builtTransactionBytes: built.toBase64(),
+        proposerAddress: publicKey.toSuiAddress(),
       })
       .returning();
 
@@ -169,7 +173,8 @@ proposalsRouter.post('/:proposalId/verify', (c) => {
   return c.text('Verifying execution!');
 });
 
-// TODO: add pagination!
+// TODO(2): Create a different access control -- this one requires way too many wallet interactions.
+// Alternatively: Create a reusable `publicKey` signature when logging in.
 proposalsRouter.get('/', async (c) => {
   const { publicKey, signature, expiry, multisigAddress } = await c.req.json();
   const { status } = c.req.query();
@@ -184,43 +189,12 @@ proposalsRouter.get('/', async (c) => {
   if (!(await isMultisigMember(multisigAddress, publicKey)))
     throw new ValidationError('Not a member of the multisig');
 
-  const proposalsWithSignatures = await db
-    .select()
-    .from(SchemaProposals)
-    .leftJoin(
-      SchemaProposalSignatures,
-      eq(SchemaProposals.id, SchemaProposalSignatures.proposalId),
-    )
-    .where(
-      and(
-        eq(SchemaProposals.multisigAddress, multisigAddress),
-        status
-          ? eq(SchemaProposals.status, proposalStatusFromString(status))
-          : undefined,
-      ),
-    );
+  const proposals = await getProposalsByMultisigAddress(
+    multisigAddress,
+    status ? proposalStatusFromString(status) : undefined,
+  );
 
-  // TODO: fix type.
-  const proposals: Record<number, ProposalWithSignatures> = {};
-
-  for (const proposal of proposalsWithSignatures) {
-    if (!proposals[proposal.proposals.id]) {
-      proposals[proposal.proposals.id] = {
-        ...proposal.proposals,
-        signatures: [],
-      };
-    }
-
-    proposals[proposal.proposals.id].signatures = proposalsWithSignatures
-      .filter(
-        (p) => p.proposal_signatures?.proposalId === proposal.proposals.id,
-      )
-      .map((p) => p.proposal_signatures)
-      .filter((p) => p !== null);
-  }
-
-  // return the proposals in descending order.
-  return c.json(Object.values(proposals).sort((a, b) => b.id - a.id));
+  return c.json(proposals);
 });
 
 export default proposalsRouter;

@@ -1,6 +1,5 @@
 import {
   pgTable,
-  varchar,
   integer,
   boolean,
   index,
@@ -8,7 +7,6 @@ import {
   serial,
   text,
   smallint,
-  jsonb,
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { ValidationError } from '../errors';
@@ -36,7 +34,7 @@ const multisigs = pgTable(
   'multisigs',
   {
     // The address (combined) of the multisig
-    address: varchar('address', { length: 66 }).notNull().primaryKey(),
+    address: text('address').notNull().primaryKey(),
     isVerified: boolean('is_verified').default(false).notNull(),
     threshold: integer('threshold').notNull(),
   },
@@ -48,11 +46,11 @@ const multisigMembers = pgTable(
   'multisig_members',
   {
     // The multisig address
-    multisigAddress: varchar('multisig_address', { length: 66 })
+    multisigAddress: text('multisig_address')
       .notNull()
       .references(() => multisigs.address),
     // The public key of the member
-    publicKey: varchar('public_key', { length: 66 })
+    publicKey: text('public_key')
       .notNull()
       .references(() => addresses.publicKey),
     // The weight of the member
@@ -71,8 +69,8 @@ const multisigMembers = pgTable(
 
 // Save a table of `pubKey -> address` to make lookups easier.
 const addresses = pgTable('addresses', {
-  publicKey: varchar('public_key', { length: 66 }).notNull().primaryKey(),
-  address: varchar('address', { length: 66 }).notNull().unique(),
+  publicKey: text('public_key').notNull().primaryKey(),
+  address: text('address').notNull().unique(),
 });
 
 type ProposalSignatures = Record<string, string>;
@@ -81,17 +79,19 @@ const proposals = pgTable('proposals', {
   // The id of the proposal (sequential, so we can keep ordering)
   id: serial('id').primaryKey(),
   // The multisig address.
-  multisigAddress: varchar('multisig_address', { length: 66 })
+  multisigAddress: text('multisig_address')
     .notNull()
     .references(() => multisigs.address),
   // the digest of the proposed transaction (avoid duplicates)
-  digest: varchar('digest', { length: 66 }).notNull().unique(),
+  digest: text('digest').notNull().unique(),
   // The status of the proposal.
   status: smallint('status').notNull().default(ProposalStatus.PENDING),
   // The tx bytes of the proposed transaction.
   transactionBytes: text('transaction_bytes').notNull(),
   // The "built" tx bytes (after calling tx.build() with a client)
   builtTransactionBytes: text('built_transaction_bytes').notNull(),
+  // The address of the proposer.
+  proposerAddress: text('proposer_address').notNull(),
 });
 
 // Store the signatures for a proposal.
@@ -101,7 +101,7 @@ const proposalSignatures = pgTable(
     proposalId: integer('proposal_id')
       .notNull()
       .references(() => proposals.id),
-    publicKey: varchar('public_key', { length: 66 })
+    publicKey: text('public_key')
       .notNull()
       .references(() => addresses.publicKey),
     signature: text('signature').notNull(),

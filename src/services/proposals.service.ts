@@ -1,6 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { SchemaProposals, SchemaProposalSignatures } from '../db/schema';
+import {
+  ProposalStatus,
+  ProposalWithSignatures,
+  SchemaProposals,
+  SchemaProposalSignatures,
+} from '../db/schema';
 import { ValidationError } from '../errors';
 
 // Get a proposal by id, and its signatures.
@@ -26,4 +31,45 @@ export const getProposalById = async (proposalId: number) => {
     ...proposal,
     signatures,
   };
+};
+
+export const getProposalsByMultisigAddress = async (
+  multisigAddress: string,
+  status?: ProposalStatus,
+) => {
+  const proposalsWithSignatures = await db
+    .select()
+    .from(SchemaProposals)
+    .leftJoin(
+      SchemaProposalSignatures,
+      eq(SchemaProposals.id, SchemaProposalSignatures.proposalId),
+    )
+    .where(
+      and(
+        eq(SchemaProposals.multisigAddress, multisigAddress),
+        status ? eq(SchemaProposals.status, status) : undefined,
+      ),
+    );
+
+  // TODO: fix type.
+  const proposals: Record<number, ProposalWithSignatures> = {};
+
+  for (const proposal of proposalsWithSignatures) {
+    if (!proposals[proposal.proposals.id]) {
+      proposals[proposal.proposals.id] = {
+        ...proposal.proposals,
+        signatures: [],
+      };
+    }
+
+    proposals[proposal.proposals.id].signatures = proposalsWithSignatures
+      .filter(
+        (p) => p.proposal_signatures?.proposalId === proposal.proposals.id,
+      )
+      .map((p) => p.proposal_signatures)
+      .filter((p) => p !== null);
+  }
+
+  // return the proposals in descending order.
+  return Object.values(proposals).sort((a, b) => b.id - a.id);
 };
