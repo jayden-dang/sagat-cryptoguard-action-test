@@ -173,8 +173,6 @@ proposalsRouter.post('/:proposalId/verify', (c) => {
   return c.text('Verifying execution!');
 });
 
-// TODO(2): Create a different access control -- this one requires way too many wallet interactions.
-// Alternatively: Create a reusable `publicKey` signature when logging in.
 proposalsRouter.get('/', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
   const { multisigAddress, status, activeAddress } = c.req.query();
