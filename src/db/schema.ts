@@ -4,7 +4,6 @@ import {
   integer,
   boolean,
   index,
-  pgEnum,
   uniqueIndex,
   serial,
 } from 'drizzle-orm/pg-core';
@@ -70,9 +69,6 @@ export const SchemaMultisigMembers = multisigMembers;
 export const SchemaProposals = proposals;
 
 export type Proposal = typeof proposals.$inferSelect;
-
 export type Multisig = typeof multisigs.$inferSelect;
-
 export type MultisigMember = typeof multisigMembers.$inferSelect;
-
 export type Address = typeof addresses.$inferSelect;

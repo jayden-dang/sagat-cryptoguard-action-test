@@ -3,6 +3,7 @@ import { parsePublicKey } from '../utils/pubKey';
 import { SchemaAddresses } from '../db/schema';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
+import { validatePersonalMessage } from '../services/addresses.service';
 
 const addressesRouter = new Hono();
 /**
@@ -11,22 +12,21 @@ const addressesRouter = new Hono();
 addressesRouter.post('/', async (c) => {
   // Register an address to the system (throgh the public key)
   const { publicKey, signature } = await c.req.json();
-  const pubKey = await parsePublicKey(publicKey);
 
-  // Verify that the sender is the owner of that pubkey, to avoid spamming
-  // our database.
-  const address = pubKey.toSuiAddress();
-  const message = new TextEncoder().encode(`Verifying address ${address}`);
+  const pubKey = await validatePersonalMessage(
+    publicKey,
+    signature,
+    `Verifying address ownership`,
+  );
 
-  const isValid = await pubKey.verifyPersonalMessage(message, signature);
-  if (!isValid) {
+  if (!pubKey) {
     return c.json({ error: 'Invalid signature' }, 400);
   }
 
   // insert (or read).
   const addr = await db
     .insert(SchemaAddresses)
-    .values({ publicKey, address })
+    .values({ publicKey: pubKey.toBase64(), address: pubKey.toSuiAddress() })
     .onConflictDoNothing()
     .returning();
 

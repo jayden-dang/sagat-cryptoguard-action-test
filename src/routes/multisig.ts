@@ -8,10 +8,15 @@ import { parsePublicKey } from '../utils/pubKey';
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { MultiSigPublicKey } from '@mysten/sui/multisig';
+import {
+  isMultisigFinalized,
+  validateQuorum,
+} from '../services/multisig.service';
+import { validatePersonalMessage } from '../services/addresses.service';
 
 const multisigRouter = new Hono();
 
-multisigRouter.post('/multisig', async (c) => {
+multisigRouter.post('/', async (c) => {
   const {
     publicKey,
     addresses,
@@ -19,26 +24,8 @@ multisigRouter.post('/multisig', async (c) => {
   }: { publicKey: string; addresses: string[]; weights: number[] } =
     await c.req.json();
 
-  if (addresses.length !== weights.length) {
-    return c.json(
-      { error: 'Addresses and weights must be the same length' },
-      400,
-    );
-  }
-
-  if (addresses.length > 10) {
-    return c.json({ error: 'Addresses cannot be more than 10' }, 400);
-  }
-
-  // validate weights.
-  weights.forEach((weight) => {
-    if (weight <= 0) {
-      return c.json({ error: 'Weights must be greater than 0' }, 400);
-    }
-    if (weight > 255) {
-      return c.json({ error: 'Weights must be less than 256' }, 400);
-    }
-  });
+  // Validate the quorum.
+  await validateQuorum(addresses, weights);
 
   const creatorPubKey = await parsePublicKey(publicKey);
 
@@ -69,9 +56,14 @@ multisigRouter.post('/multisig', async (c) => {
     threshold: weights.reduce((acc, weight) => acc + weight, 0),
     publicKeys: parsedPubKeys.map((key, index) => ({
       publicKey: key,
-      weight: weights[parsedPubKeys.indexOf(key)],
+      weight: weights[index],
     })),
   });
+
+  // Create a map of address to weight
+  const addressWeightMap = new Map(
+    addresses.map((addr, i) => [addr, weights[i]]),
+  );
 
   // add the multisig to the database.
   const database = await db.transaction(async (tx) => {
@@ -89,10 +81,10 @@ multisigRouter.post('/multisig', async (c) => {
     const members = await tx
       .insert(SchemaMultisigMembers)
       .values(
-        parsedPubKeys.map((key, index) => ({
+        parsedPubKeys.map((key) => ({
           multisigAddress: msig.address,
-          publicKey: key.toSuiAddress(),
-          weight: weights[parsedPubKeys.indexOf(key)],
+          publicKey: key.toBase64(),
+          weight: addressWeightMap.get(key.toSuiAddress()),
           isAccepted: key.toSuiAddress() === creatorPubKey.toSuiAddress(),
         })),
       )
@@ -108,31 +100,46 @@ multisigRouter.post('/multisig', async (c) => {
 });
 
 // Accept participation in a multisig scheme as a public key holder.
-multisigRouter.post('/multisig/:address/accept', async (c) => {
+multisigRouter.post('/:address/accept', async (c) => {
   const { publicKey, signature } = await c.req.json();
   const { address } = c.req.param();
 
   const pubKey = await parsePublicKey(publicKey);
 
-  const message = new TextEncoder().encode(
+  const senderAddress = await validatePersonalMessage(
+    publicKey,
+    signature,
     `Participating in multisig ${address}`,
   );
 
-  const isValid = await pubKey.verifyPersonalMessage(message, signature);
+  if (!senderAddress) return c.json({ error: 'Invalid signature' }, 400);
 
-  if (!isValid) {
-    return c.json({ error: 'Invalid signature' }, 400);
-  }
+  await db.transaction(async (tx) => {
+    const msig = await tx.query.SchemaMultisigs.findFirst({
+      where: eq(SchemaMultisigs.address, address),
+    });
 
-  await db
-    .update(SchemaMultisigMembers)
-    .set({ isAccepted: true })
-    .where(
-      and(
-        eq(SchemaMultisigMembers.multisigAddress, address),
-        eq(SchemaMultisigMembers.publicKey, publicKey),
-      ),
-    );
+    if (!msig) throw new Error('Multisig not found');
+
+    await tx
+      .update(SchemaMultisigMembers)
+      .set({ isAccepted: true })
+      .where(
+        and(
+          eq(SchemaMultisigMembers.multisigAddress, address),
+          eq(SchemaMultisigMembers.publicKey, pubKey.toBase64()),
+        ),
+      );
+
+    const isFinalized = await isMultisigFinalized(address);
+    // if all members have accepted, we can finalize the multisig.
+    if (isFinalized) {
+      await tx
+        .update(SchemaMultisigs)
+        .set({ isVerified: true })
+        .where(eq(SchemaMultisigs.address, address));
+    }
+  });
 
   return c.text('Accepted multisig!');
 });
