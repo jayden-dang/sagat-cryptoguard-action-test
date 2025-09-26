@@ -1,1 +1,0 @@
-ALTER TABLE "multisig_members" ADD COLUMN "order" integer DEFAULT 0 NOT NULL;

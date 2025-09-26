@@ -1,5 +1,5 @@
 {
-  "id": "762ad4f0-0b4f-4e62-916f-59494602cffc",
+  "id": "72a1b154-77e9-4e7e-8889-f9b71efab455",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -10,13 +10,13 @@
       "columns": {
         "public_key": {
           "name": "public_key",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": true,
           "notNull": true
         },
         "address": {
           "name": "address",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         }
@@ -28,7 +28,9 @@
         "addresses_address_unique": {
           "name": "addresses_address_unique",
           "nullsNotDistinct": false,
-          "columns": ["address"]
+          "columns": [
+            "address"
+          ]
         }
       },
       "policies": {},
@@ -41,13 +43,13 @@
       "columns": {
         "multisig_address": {
           "name": "multisig_address",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
         "public_key": {
           "name": "public_key",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -64,6 +66,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -94,8 +102,12 @@
           "name": "multisig_members_multisig_address_multisigs_address_fk",
           "tableFrom": "multisig_members",
           "tableTo": "multisigs",
-          "columnsFrom": ["multisig_address"],
-          "columnsTo": ["address"],
+          "columnsFrom": [
+            "multisig_address"
+          ],
+          "columnsTo": [
+            "address"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -103,8 +115,12 @@
           "name": "multisig_members_public_key_addresses_public_key_fk",
           "tableFrom": "multisig_members",
           "tableTo": "addresses",
-          "columnsFrom": ["public_key"],
-          "columnsTo": ["public_key"],
+          "columnsFrom": [
+            "public_key"
+          ],
+          "columnsTo": [
+            "public_key"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -121,7 +137,7 @@
       "columns": {
         "address": {
           "name": "address",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": true,
           "notNull": true
         },
@@ -131,6 +147,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "threshold": {
+          "name": "threshold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -157,6 +179,72 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.proposal_signatures": {
+      "name": "proposal_signatures",
+      "schema": "",
+      "columns": {
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_key": {
+          "name": "public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signature": {
+          "name": "signature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "proposal_signatures_proposal_id_proposals_id_fk": {
+          "name": "proposal_signatures_proposal_id_proposals_id_fk",
+          "tableFrom": "proposal_signatures",
+          "tableTo": "proposals",
+          "columnsFrom": [
+            "proposal_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "proposal_signatures_public_key_addresses_public_key_fk": {
+          "name": "proposal_signatures_public_key_addresses_public_key_fk",
+          "tableFrom": "proposal_signatures",
+          "tableTo": "addresses",
+          "columnsFrom": [
+            "public_key"
+          ],
+          "columnsTo": [
+            "public_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "proposal_signatures_proposal_id_public_key_pk": {
+          "name": "proposal_signatures_proposal_id_public_key_pk",
+          "columns": [
+            "proposal_id",
+            "public_key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.proposals": {
       "name": "proposals",
       "schema": "",
@@ -169,13 +257,13 @@
         },
         "multisig_address": {
           "name": "multisig_address",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
         "digest": {
           "name": "digest",
-          "type": "varchar(66)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -190,7 +278,19 @@
           "name": "transaction_bytes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "built_transaction_bytes": {
+          "name": "built_transaction_bytes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposer_address": {
+          "name": "proposer_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {},
@@ -199,14 +299,26 @@
           "name": "proposals_multisig_address_multisigs_address_fk",
           "tableFrom": "proposals",
           "tableTo": "multisigs",
-          "columnsFrom": ["multisig_address"],
-          "columnsTo": ["address"],
+          "columnsFrom": [
+            "multisig_address"
+          ],
+          "columnsTo": [
+            "address"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "proposals_digest_unique": {
+          "name": "proposals_digest_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "digest"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

@@ -1,13 +1,17 @@
 import { Context } from 'hono';
 
-import { deleteCookie, getCookie, getSignedCookie, setCookie } from 'hono/cookie';
+import {
+  deleteCookie,
+  getCookie,
+  getSignedCookie,
+  setCookie,
+} from 'hono/cookie';
 import { JWT_SECRET } from '../db/env';
 import { validatePersonalMessage } from './addresses.service';
 import { PublicKey } from '@mysten/sui/cryptography';
 import { parsePublicKey } from '../utils/pubKey';
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 
-const ACTIVE_WALLET_HEADER = 'active-address';
 const JWT_COOKIE_NAME = 'connected-wallet';
 
 const getJwtSecret = () => {
@@ -28,9 +32,11 @@ const issueJwt = async (publicKeys: PublicKey[]) => {
   );
 };
 
-export interface WalletConnectedContext extends Context {
-  publicKeys: PublicKey[];
-}
+export type AuthEnv = {
+  Variables: {
+    publicKeys: PublicKey[];
+  };
+};
 
 // We connect to the system incrementally with each public key we verify.
 // This is because the wallet connect might have multiple keys..
@@ -54,7 +60,6 @@ export const connectToPublicKey = async (c: Context) => {
         }
       } catch (err) {
         // JWT is invalid or expired, start fresh
-        console.error('JWT validation failed:', err);
       }
     }
 
@@ -81,9 +86,12 @@ export const connectToPublicKey = async (c: Context) => {
     }
 
     // Check if expiry is too far in the future (max 1 hour)
-    const maxExpiry = now + (60 * 60 * 1000); // 1 hour
+    const maxExpiry = now + 60 * 60 * 1000; // 1 hour
     if (expiryDate.getTime() > maxExpiry) {
-      return c.json({ error: 'Signature expiry too far in the future (max 1 hour)' }, 400);
+      return c.json(
+        { error: 'Signature expiry too far in the future (max 1 hour)' },
+        400,
+      );
     }
 
     const pubKey = await validatePersonalMessage(
@@ -93,7 +101,11 @@ export const connectToPublicKey = async (c: Context) => {
     );
 
     // If the public key is not already in the list, we add it.
-    if (!pubKeys.some((existingKey) => existingKey.toBase64() === pubKey.toBase64())) {
+    if (
+      !pubKeys.some(
+        (existingKey) => existingKey.toBase64() === pubKey.toBase64(),
+      )
+    ) {
       pubKeys.push(pubKey);
     }
 
@@ -113,24 +125,19 @@ export const connectToPublicKey = async (c: Context) => {
   }
 };
 
-// Middleware to connect the right wallet based on cookies.
+// Middleware to authenticate requests using JWT cookies
 export const authMiddleware = async (c: Context, next: () => Promise<void>) => {
-  // the request is meant to work for this address
-  const requestedAddress = c.req.header(ACTIVE_WALLET_HEADER);
-
-  if (!requestedAddress) return c.text('Unauthorized', 401);
-
   try {
     // Read cookie from client
     const cookie = getCookie(c, JWT_COOKIE_NAME);
 
-    // IF we have no cookie, we're unauthorized.
+    // If we have no cookie, we're unauthorized.
     if (!cookie) return c.text('Unauthorized', 401);
 
     // Now verify the JWT.
     const { payload } = await jwtVerify(cookie, getJwtSecret());
 
-    // IF we have no payload, we're unauthorized.
+    // If we have no payload, we're unauthorized.
     if (!payload) return c.text('Unauthorized', 401);
 
     // Extract the public keys.
@@ -144,7 +151,7 @@ export const authMiddleware = async (c: Context, next: () => Promise<void>) => {
     }
 
     // Set the public keys in the context.
-    (c as WalletConnectedContext).publicKeys = availablePublicKeys;
+    c.set('publicKeys', availablePublicKeys);
 
     await next();
   } catch (err) {

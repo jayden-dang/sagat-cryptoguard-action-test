@@ -39,7 +39,9 @@ describe('Auth API', () => {
 
   // Helper to create signed auth request
   const createAuthRequest = async (keypair: any, expiryMinutes = 30) => {
-    const expiry = new Date(Date.now() + expiryMinutes * 60 * 1000).toISOString();
+    const expiry = new Date(
+      Date.now() + expiryMinutes * 60 * 1000,
+    ).toISOString();
     const message = `Verifying address ownership until: ${expiry}`;
     return {
       publicKey: keypair.publicKey,
@@ -101,7 +103,7 @@ describe('Auth API', () => {
     const response = await post(
       '/auth/connect',
       await createAuthRequest(keypair),
-      existingCookie
+      existingCookie,
     );
     expect(response.status).toBe(200);
     return getCookie(response)!;
@@ -119,7 +121,9 @@ describe('Auth API', () => {
   beforeAll(async () => {
     ({ db, dbName, pool } = await setupTestDatabase());
     mock.module('../src/db', () => ({ db }));
-    mock.module('../src/db/env', () => ({ JWT_SECRET: 'test-secret-key-for-testing' }));
+    mock.module('../src/db/env', () => ({
+      JWT_SECRET: 'test-secret-key-for-testing',
+    }));
     const authRouter = (await import('../src/routes/auth')).default;
     app = new Hono().route('/auth', authRouter);
   });
@@ -135,7 +139,10 @@ describe('Auth API', () => {
   describe('POST /auth/connect - Basic Functionality', () => {
     test('creates JWT for first-time connection', async () => {
       const [user] = await seedAddresses(db, 1);
-      const response = await post('/auth/connect', await createAuthRequest(user));
+      const response = await post(
+        '/auth/connect',
+        await createAuthRequest(user),
+      );
 
       expect(response.status).toBe(200);
       expect(hasCookie(response)).toBe(true);
@@ -185,7 +192,10 @@ describe('Auth API', () => {
 
     test('accepts unregistered addresses', async () => {
       const unregistered = generateKeypair();
-      const response = await post('/auth/connect', await createAuthRequest(unregistered));
+      const response = await post(
+        '/auth/connect',
+        await createAuthRequest(unregistered),
+      );
 
       // Auth allows new users without pre-registration
       expect(response.status).toBe(200);
@@ -202,7 +212,7 @@ describe('Auth API', () => {
       const verifyResponse = await post(
         '/auth/connect',
         await createAuthRequest(users[2]),
-        finalCookie
+        finalCookie,
       );
       expect(verifyResponse.status).toBe(200);
     });
@@ -211,7 +221,10 @@ describe('Auth API', () => {
   describe('POST /auth/connect - Security', () => {
     test('sets secure cookie attributes', async () => {
       const [user] = await seedAddresses(db, 1);
-      const response = await post('/auth/connect', await createAuthRequest(user));
+      const response = await post(
+        '/auth/connect',
+        await createAuthRequest(user),
+      );
 
       const setCookie = response.headers.get('set-cookie');
       expect(setCookie).toContain('HttpOnly'); // Prevents XSS attacks
@@ -244,7 +257,9 @@ describe('Auth API', () => {
       const [user] = await seedAddresses(db, 1);
 
       // Create signature with expiry 10 years in future
-      const farFutureExpiry = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString();
+      const farFutureExpiry = new Date(
+        Date.now() + 10 * 365 * 24 * 60 * 60 * 1000,
+      ).toISOString();
       const message = `Verifying address ownership until: ${farFutureExpiry}`;
       const signature = await signMessage(user.keypair, message);
 
@@ -256,14 +271,18 @@ describe('Auth API', () => {
 
       expect(response.status).toBe(400);
       const body = await response.json();
-      expect(body.error).toBe('Signature expiry too far in the future (max 1 hour)');
+      expect(body.error).toBe(
+        'Signature expiry too far in the future (max 1 hour)',
+      );
     });
 
     test('accepts signatures with reasonable future timestamps', async () => {
       const [user] = await seedAddresses(db, 1);
 
       // Create signature with expiry 5 minutes in future (reasonable)
-      const reasonableExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      const reasonableExpiry = new Date(
+        Date.now() + 5 * 60 * 1000,
+      ).toISOString();
       const message = `Verifying address ownership until: ${reasonableExpiry}`;
       const signature = await signMessage(user.keypair, message);
 
@@ -293,7 +312,7 @@ describe('Auth API', () => {
       const response = await post(
         '/auth/connect',
         await createAuthRequest(user),
-        'connected-wallet=malformed-jwt'
+        'connected-wallet=malformed-jwt',
       );
 
       expect(response.status).toBe(200);
@@ -307,7 +326,7 @@ describe('Auth API', () => {
       const response = await post(
         '/auth/connect',
         await createAuthRequest(user),
-        'connected-wallet=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjB9.invalid'
+        'connected-wallet=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjB9.invalid',
       );
 
       expect(response.status).toBe(200);
@@ -318,7 +337,10 @@ describe('Auth API', () => {
       const [user] = await seedAddresses(db, 1);
 
       // Get a valid cookie first
-      const response1 = await post('/auth/connect', await createAuthRequest(user));
+      const response1 = await post(
+        '/auth/connect',
+        await createAuthRequest(user),
+      );
       const cookie = getCookie(response1);
 
       // Tamper with the JWT
@@ -328,7 +350,7 @@ describe('Auth API', () => {
       const response2 = await post(
         '/auth/connect',
         await createAuthRequest(user),
-        tamperedCookie
+        tamperedCookie,
       );
 
       expect(response2.status).toBe(200);
@@ -457,7 +479,10 @@ describe('Auth API', () => {
       expect(disconnectResponse.status).toBe(200);
 
       // Reconnect WITHOUT the old cookie (simulating browser cleared it)
-      const response = await post('/auth/connect', await createAuthRequest(user));
+      const response = await post(
+        '/auth/connect',
+        await createAuthRequest(user),
+      );
       expect(response.status).toBe(200);
 
       const cookie2 = getCookie(response);
@@ -481,7 +506,7 @@ describe('Auth API', () => {
       // Connect again WITHOUT the old cookie
       const newResponse = await post(
         '/auth/connect',
-        await createAuthRequest(users[0])
+        await createAuthRequest(users[0]),
       );
       expect(newResponse.status).toBe(200);
 
@@ -492,7 +517,7 @@ describe('Auth API', () => {
       const verifyResponse = await post(
         '/auth/connect',
         await createAuthRequest(users[1]),
-        newCookie || undefined
+        newCookie || undefined,
       );
       expect(verifyResponse.status).toBe(200);
     });

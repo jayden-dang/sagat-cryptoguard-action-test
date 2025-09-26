@@ -1,1 +1,0 @@
-ALTER TABLE "proposals" ADD CONSTRAINT "proposals_digest_unique" UNIQUE("digest");

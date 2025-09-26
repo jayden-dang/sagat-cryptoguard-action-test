@@ -3,34 +3,28 @@ import { parsePublicKey } from '../utils/pubKey';
 import { SchemaAddresses } from '../db/schema';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { validatePersonalMessage } from '../services/addresses.service';
+import { authMiddleware, AuthEnv } from '../services/auth.service';
+import { Context } from 'hono';
 
 const addressesRouter = new Hono();
 /**
- * Register an address (and its public key) on the system.
+ * Register addresses from authenticated JWT context.
+ * No signature required - uses JWT authentication.
  */
-addressesRouter.post('/', async (c) => {
-  // Register an address to the system (throgh the public key)
-  const { publicKey, signature } = await c.req.json();
+addressesRouter.post('/', authMiddleware, async (c: Context<AuthEnv>) => {
+  // Get all public keys from the JWT
+  const publicKeys = c.get('publicKeys');
 
-  const pubKey = await validatePersonalMessage(
-    publicKey,
-    signature,
-    `Verifying address ownership`,
-  );
+  // Prepare bulk insert data
+  const addressData = publicKeys.map((pubKey) => ({
+    publicKey: pubKey.toBase64(),
+    address: pubKey.toSuiAddress(),
+  }));
 
-  if (!pubKey) {
-    return c.json({ error: 'Invalid signature' }, 400);
-  }
+  // Bulk insert all addresses
+  await db.insert(SchemaAddresses).values(addressData).onConflictDoNothing();
 
-  // insert (or read).
-  const addr = await db
-    .insert(SchemaAddresses)
-    .values({ publicKey: pubKey.toBase64(), address: pubKey.toSuiAddress() })
-    .onConflictDoNothing()
-    .returning();
-
-  return c.json(addr);
+  return c.json({ success: true });
 });
 
 // Get the public key for an address registered in the system.

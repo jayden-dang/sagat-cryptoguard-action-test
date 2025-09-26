@@ -1,5 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import {
   getMultisig,
   isMultisigMember,
@@ -22,6 +22,7 @@ import {
 } from '../services/proposals.service';
 import { validatePersonalMessage } from '../services/addresses.service';
 import { and, eq } from 'drizzle-orm';
+import { AuthEnv, authMiddleware } from '../services/auth.service';
 
 const proposalsRouter = new Hono();
 
@@ -174,18 +175,16 @@ proposalsRouter.post('/:proposalId/verify', (c) => {
 
 // TODO(2): Create a different access control -- this one requires way too many wallet interactions.
 // Alternatively: Create a reusable `publicKey` signature when logging in.
-proposalsRouter.get('/', async (c) => {
-  const { publicKey, signature, expiry, multisigAddress } = await c.req.json();
-  const { status } = c.req.query();
-  if (expiry < Date.now()) throw new ValidationError('Message is expired');
+proposalsRouter.get('/', authMiddleware, async (c: Context<AuthEnv>) => {
+  const publicKeys = c.get('publicKeys');
+  const { multisigAddress, status, activeAddress } = c.req.query();
 
-  await validatePersonalMessage(
-    publicKey,
-    signature,
-    `Grant read access to proposals until ${expiry}`,
-  );
+  const pubKey = publicKeys.find((key) => key.toSuiAddress() === activeAddress);
 
-  if (!(await isMultisigMember(multisigAddress, publicKey)))
+  if (!pubKey)
+    throw new ValidationError('Not authorized to access this multisig');
+
+  if (!(await isMultisigMember(multisigAddress, pubKey.toBase64())))
     throw new ValidationError('Not a member of the multisig');
 
   const proposals = await getProposalsByMultisigAddress(
