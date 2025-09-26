@@ -23,8 +23,7 @@ pool.on('error', (err) => {
 });
 
 // Create drizzle instance with the pool and schema
-export const db = drizzle({
-  client: pool,
+export const db = drizzle(pool, {
   schema: {
     SchemaAddresses,
     SchemaMultisigs,

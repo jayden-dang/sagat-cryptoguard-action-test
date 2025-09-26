@@ -6,6 +6,7 @@ import { ValidationError } from '../errors';
 export const validateQuorum = async (
   addresses: string[],
   weights: number[],
+  threshold: number,
 ) => {
   if (addresses.length !== weights.length) {
     throw new ValidationError('Addresses and weights must be the same length');
@@ -32,6 +33,14 @@ export const validateQuorum = async (
   if (uniqueAddresses.length !== addresses.length) {
     throw new ValidationError('Addresses must be unique');
   }
+
+  if (threshold > weights.reduce((acc, weight) => acc + weight, 0)) {
+    throw new ValidationError('Threshold must be less than the sum of weights');
+  }
+
+  if (threshold <= 1) {
+    throw new ValidationError('Threshold must be greater than 1');
+  }
 };
 
 // Returns true if the multisig is finalized (all members have accepted the invitation).
@@ -47,16 +56,22 @@ export const isMultisigFinalized = async (address: string) => {
 };
 
 // Returns true if the public key is a member of the multisig and has accepted the invitation.
-export const isValidMultisigMember = async (
+export const isMultisigMember = async (
   msigAddress: string,
   publicKey: string,
+  checkAcceptance: boolean = true,
 ) => {
+  const whereConditions = [
+    eq(SchemaMultisigMembers.multisigAddress, msigAddress),
+    eq(SchemaMultisigMembers.publicKey, publicKey),
+  ];
+
+  if (checkAcceptance) {
+    whereConditions.push(eq(SchemaMultisigMembers.isAccepted, true));
+  }
+
   const member = await db.query.SchemaMultisigMembers.findFirst({
-    where: and(
-      eq(SchemaMultisigMembers.multisigAddress, msigAddress),
-      eq(SchemaMultisigMembers.publicKey, publicKey),
-      eq(SchemaMultisigMembers.isAccepted, true),
-    ),
+    where: and(...whereConditions),
   });
-  return member !== null;
+  return !!member;
 };

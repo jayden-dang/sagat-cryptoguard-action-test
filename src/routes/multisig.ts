@@ -10,9 +10,12 @@ import { db } from '../db';
 import { MultiSigPublicKey } from '@mysten/sui/multisig';
 import {
   isMultisigFinalized,
+  isMultisigMember,
   validateQuorum,
 } from '../services/multisig.service';
 import { validatePersonalMessage } from '../services/addresses.service';
+import { PublicKey } from '@mysten/sui/cryptography';
+import { ValidationError } from '../errors';
 
 const multisigRouter = new Hono();
 
@@ -21,11 +24,16 @@ multisigRouter.post('/', async (c) => {
     publicKey,
     addresses,
     weights,
-  }: { publicKey: string; addresses: string[]; weights: number[] } =
-    await c.req.json();
+    threshold,
+  }: {
+    publicKey: string;
+    addresses: string[];
+    weights: number[];
+    threshold: number;
+  } = await c.req.json();
 
   // Validate the quorum.
-  await validateQuorum(addresses, weights);
+  await validateQuorum(addresses, weights, threshold);
 
   const creatorPubKey = await parsePublicKey(publicKey);
 
@@ -48,22 +56,26 @@ multisigRouter.post('/', async (c) => {
     );
   }
 
-  const parsedPubKeys = await Promise.all(
-    dbPubKeys.map(async (key) => await parsePublicKey(key.publicKey)),
-  );
+  const parsedPubKeys: PublicKey[] = [];
+
+  for (const address of addresses) {
+    const key = dbPubKeys.find((key) => key.address === address);
+    if (!key) {
+      return c.json(
+        { error: 'Some addresses are not registered in the system' },
+        400,
+      );
+    }
+    parsedPubKeys.push(await parsePublicKey(key.publicKey));
+  }
 
   const multisig = MultiSigPublicKey.fromPublicKeys({
-    threshold: weights.reduce((acc, weight) => acc + weight, 0),
+    threshold,
     publicKeys: parsedPubKeys.map((key, index) => ({
       publicKey: key,
       weight: weights[index],
     })),
   });
-
-  // Create a map of address to weight
-  const addressWeightMap = new Map(
-    addresses.map((addr, i) => [addr, weights[i]]),
-  );
 
   // add the multisig to the database.
   const database = await db.transaction(async (tx) => {
@@ -84,7 +96,8 @@ multisigRouter.post('/', async (c) => {
         parsedPubKeys.map((key) => ({
           multisigAddress: msig.address,
           publicKey: key.toBase64(),
-          weight: addressWeightMap.get(key.toSuiAddress()),
+          weight:
+            weights[addresses.findIndex((addr) => addr === key.toSuiAddress())],
           isAccepted: key.toSuiAddress() === creatorPubKey.toSuiAddress(),
         })),
       )
@@ -112,14 +125,17 @@ multisigRouter.post('/:address/accept', async (c) => {
     `Participating in multisig ${address}`,
   );
 
-  if (!senderAddress) return c.json({ error: 'Invalid signature' }, 400);
+  if (!senderAddress) throw new ValidationError('Invalid signature');
 
-  await db.transaction(async (tx) => {
+  if (!(await isMultisigMember(address, pubKey.toBase64(), false)))
+    throw new ValidationError('You are not a member of this multisig');
+
+  const result = await db.transaction(async (tx) => {
     const msig = await tx.query.SchemaMultisigs.findFirst({
       where: eq(SchemaMultisigs.address, address),
     });
 
-    if (!msig) throw new Error('Multisig not found');
+    if (!msig) throw new ValidationError('Multisig not found');
 
     await tx
       .update(SchemaMultisigMembers)
@@ -139,9 +155,11 @@ multisigRouter.post('/:address/accept', async (c) => {
         .set({ isVerified: true })
         .where(eq(SchemaMultisigs.address, address));
     }
+    msig.isVerified = isFinalized;
+    return msig;
   });
 
-  return c.text('Accepted multisig!');
+  return c.json(result);
 });
 
 export default multisigRouter;
