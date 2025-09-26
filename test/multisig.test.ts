@@ -1,7 +1,23 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach, mock } from 'bun:test';
+import {
+  describe,
+  test,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  mock,
+} from 'bun:test';
 import { Hono } from 'hono';
-import { setupTestDatabase, teardownTestDatabase, clearTestData } from './setup/test-db';
-import { seedAddresses, generateKeypair, signMessage } from './setup/test-helpers';
+import {
+  setupTestDatabase,
+  teardownTestDatabase,
+  clearTestData,
+} from './setup/test-db';
+import {
+  seedAddresses,
+  generateKeypair,
+  signMessage,
+} from './setup/test-helpers';
 import type { Pool } from 'pg';
 import type { MultisigMember } from '../src/db/schema';
 
@@ -40,9 +56,9 @@ describe('Multisig API', () => {
 
       const response = await post('/multisig', {
         publicKey: addresses[0].publicKey,
-        addresses: addresses.map(a => a.address),
+        addresses: addresses.map((a) => a.address),
         weights: [1, 1, 1],
-        threshold: 2
+        threshold: 2,
       });
 
       expect(response.status).toBe(200);
@@ -57,13 +73,15 @@ describe('Multisig API', () => {
 
       const response = await post('/multisig', {
         publicKey: external.publicKey,
-        addresses: addresses.map(a => a.address),
+        addresses: addresses.map((a) => a.address),
         weights: [1, 1],
-        threshold: 2
+        threshold: 2,
       });
 
       expect(response.status).toBe(400);
-      expect((await response.json()).error).toBe('Creator address is not in the list of addresses');
+      expect((await response.json()).error).toBe(
+        'Creator address is not in the list of addresses',
+      );
     });
 
     test('validates quorum parameters', async () => {
@@ -71,9 +89,9 @@ describe('Multisig API', () => {
 
       const response = await post('/multisig', {
         publicKey: addresses[0].publicKey,
-        addresses: addresses.map(a => a.address),
+        addresses: addresses.map((a) => a.address),
         weights: [1, 1, 1],
-        threshold: 5 // Greater than sum
+        threshold: 5, // Greater than sum
       });
 
       expect(response.status).toBe(500);
@@ -85,9 +103,9 @@ describe('Multisig API', () => {
       const addresses = await seedAddresses(db, memberCount);
       const response = await post('/multisig', {
         publicKey: addresses[0].publicKey,
-        addresses: addresses.map(a => a.address),
+        addresses: addresses.map((a) => a.address),
         weights: new Array(memberCount).fill(1),
-        threshold: 2
+        threshold: 2,
       });
       const data = await response.json();
       return { multisig: data.multisig, members: data.members, addresses };
@@ -99,7 +117,10 @@ describe('Multisig API', () => {
 
       const response = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: member.publicKey,
-        signature: await signMessage(member.keypair, `Participating in multisig ${multisig.address}`)
+        signature: await signMessage(
+          member.keypair,
+          `Participating in multisig ${multisig.address}`,
+        ),
       });
 
       expect(response.status).toBe(200);
@@ -115,15 +136,22 @@ describe('Multisig API', () => {
       expect(members).toHaveLength(2);
 
       // Creator should be auto-accepted, second member should not
-      const creatorMember = members.find((m: MultisigMember) => m.publicKey === addresses[0].publicKey);
-      const otherMember = members.find((m: MultisigMember) => m.publicKey === addresses[1].publicKey);
+      const creatorMember = members.find(
+        (m: MultisigMember) => m.publicKey === addresses[0].publicKey,
+      );
+      const otherMember = members.find(
+        (m: MultisigMember) => m.publicKey === addresses[1].publicKey,
+      );
       expect(creatorMember.isAccepted).toBe(true);
       expect(otherMember.isAccepted).toBe(false);
 
       // Second member accepts
       const response = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: addresses[1].publicKey,
-        signature: await signMessage(addresses[1].keypair, `Participating in multisig ${multisig.address}`)
+        signature: await signMessage(
+          addresses[1].keypair,
+          `Participating in multisig ${multisig.address}`,
+        ),
       });
 
       expect(response.status).toBe(200);
@@ -140,7 +168,7 @@ describe('Multisig API', () => {
 
       const response = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: generateKeypair().publicKey,
-        signature: 'invalid'
+        signature: 'invalid',
       });
 
       expect(response.status).toBe(500);
@@ -152,7 +180,10 @@ describe('Multisig API', () => {
 
       const response = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: nonMember.publicKey,
-        signature: await signMessage(nonMember.keypair, `Participating in multisig ${multisig.address}`)
+        signature: await signMessage(
+          nonMember.keypair,
+          `Participating in multisig ${multisig.address}`,
+        ),
       });
 
       expect(response.status).toBe(500);
@@ -168,7 +199,10 @@ describe('Multisig API', () => {
 
       const response = await post(`/multisig/${fakeAddress}/accept`, {
         publicKey: addresses[0].publicKey,
-        signature: await signMessage(addresses[0].keypair, `Participating in multisig ${fakeAddress}`)
+        signature: await signMessage(
+          addresses[0].keypair,
+          `Participating in multisig ${fakeAddress}`,
+        ),
       });
 
       expect(response.status).toBe(500); // Should throw ValidationError('Multisig not found')
@@ -181,14 +215,20 @@ describe('Multisig API', () => {
       // First acceptance
       const response1 = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: member.publicKey,
-        signature: await signMessage(member.keypair, `Participating in multisig ${multisig.address}`)
+        signature: await signMessage(
+          member.keypair,
+          `Participating in multisig ${multisig.address}`,
+        ),
       });
       expect(response1.status).toBe(200);
 
       // Try to accept again with same member
       const response2 = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: member.publicKey,
-        signature: await signMessage(member.keypair, `Participating in multisig ${multisig.address}`)
+        signature: await signMessage(
+          member.keypair,
+          `Participating in multisig ${multisig.address}`,
+        ),
       });
       expect(response2.status).toBe(200);
 
@@ -203,7 +243,10 @@ describe('Multisig API', () => {
 
       const response = await post(`/multisig/${multisig.address}/accept`, {
         publicKey: unregistered.publicKey,
-        signature: await signMessage(unregistered.keypair, `Participating in multisig ${multisig.address}`)
+        signature: await signMessage(
+          unregistered.keypair,
+          `Participating in multisig ${multisig.address}`,
+        ),
       });
 
       expect(response.status).toBe(500);

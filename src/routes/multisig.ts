@@ -85,6 +85,7 @@ multisigRouter.post('/', async (c) => {
         .values({
           address: multisig.toSuiAddress(),
           isVerified: false,
+          threshold,
         })
         .returning()
     )[0];

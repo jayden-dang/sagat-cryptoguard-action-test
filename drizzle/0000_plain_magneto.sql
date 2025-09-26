@@ -20,7 +20,8 @@ CREATE TABLE "proposals" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"multisig_address" varchar(66) NOT NULL,
 	"digest" varchar(66) NOT NULL,
-	"status" varchar(255) NOT NULL
+	"status" smallint DEFAULT 0 NOT NULL,
+	"transaction_bytes" text
 );
 --> statement-breakpoint
 ALTER TABLE "multisig_members" ADD CONSTRAINT "multisig_members_multisig_address_multisigs_address_fk" FOREIGN KEY ("multisig_address") REFERENCES "public"."multisigs"("address") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

@@ -1,6 +1,6 @@
 {
-  "id": "762ad4f0-0b4f-4e62-916f-59494602cffc",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "057c720f-6fbb-4c4d-b01a-5d03500b1c25",
+  "prevId": "77169bef-bcd6-4ce3-9c1a-3b2fd09e6080",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -131,6 +131,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "threshold": {
+          "name": "threshold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -152,6 +158,61 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.proposal_signatures": {
+      "name": "proposal_signatures",
+      "schema": "",
+      "columns": {
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_key": {
+          "name": "public_key",
+          "type": "varchar(66)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signature": {
+          "name": "signature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "proposal_signatures_proposal_id_proposals_id_fk": {
+          "name": "proposal_signatures_proposal_id_proposals_id_fk",
+          "tableFrom": "proposal_signatures",
+          "tableTo": "proposals",
+          "columnsFrom": ["proposal_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "proposal_signatures_public_key_addresses_public_key_fk": {
+          "name": "proposal_signatures_public_key_addresses_public_key_fk",
+          "tableFrom": "proposal_signatures",
+          "tableTo": "addresses",
+          "columnsFrom": ["public_key"],
+          "columnsTo": ["public_key"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "proposal_signatures_proposal_id_public_key_pk": {
+          "name": "proposal_signatures_proposal_id_public_key_pk",
+          "columns": ["proposal_id", "public_key"]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -190,7 +251,13 @@
           "name": "transaction_bytes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "built_transaction_bytes": {
+          "name": "built_transaction_bytes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {},
@@ -206,7 +273,13 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "proposals_digest_unique": {
+          "name": "proposals_digest_unique",
+          "nullsNotDistinct": false,
+          "columns": ["digest"]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

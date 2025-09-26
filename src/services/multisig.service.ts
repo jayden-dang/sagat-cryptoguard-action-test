@@ -1,7 +1,40 @@
 import { and, eq } from 'drizzle-orm';
-import { SchemaMultisigMembers } from '../db/schema';
+import {
+  ProposalStatus,
+  SchemaMultisigMembers,
+  SchemaMultisigs,
+  SchemaProposals,
+} from '../db/schema';
 import { db } from '../db';
 import { ValidationError } from '../errors';
+import { Transaction } from '@mysten/sui/transactions';
+import { queryAllOwnedObjects } from '../utils/client';
+
+// Returns the multisig with its members.
+export const getMultisig = async (address: string) => {
+  const result = await db
+    .select()
+    .from(SchemaMultisigs)
+    .leftJoin(
+      SchemaMultisigMembers,
+      eq(SchemaMultisigs.address, SchemaMultisigMembers.multisigAddress),
+    )
+    .where(eq(SchemaMultisigs.address, address));
+
+  if (!result || result.length === 0) {
+    throw new ValidationError('Multisig not found');
+  }
+
+  const multisig = result[0].multisigs;
+  const members = result
+    .filter((row) => row.multisig_members !== null)
+    .map((row) => row.multisig_members);
+
+  return {
+    ...multisig,
+    members,
+  };
+};
 
 export const validateQuorum = async (
   addresses: string[],
@@ -74,4 +107,78 @@ export const isMultisigMember = async (
     where: and(...whereConditions),
   });
   return !!member;
+};
+
+// Get a list of pending proposals for a given multisig address.
+export const getPendingProposals = async (multisigAddress: string) => {
+  const proposals = await db.query.SchemaProposals.findMany({
+    where: and(
+      eq(SchemaProposals.multisigAddress, multisigAddress),
+      eq(SchemaProposals.status, ProposalStatus.PENDING),
+    ),
+  });
+  return proposals;
+};
+
+// Extracts all the owned or receiving objects from a supplied transaction.
+export const extractOwnedObjects = (tx: Transaction) => {
+  return tx
+    .getData()
+    .inputs.filter(
+      (x) => x.$kind === 'Object' && x.Object.$kind === 'ImmOrOwnedObject',
+    )
+    .map((x) => x.Object!.ImmOrOwnedObject!.objectId);
+};
+
+// Returns true if the transaction has unresolved objects.
+export const hasUnresolvedObjects = (tx: Transaction) => {
+  return tx.getData().inputs.some((x) => x.$kind === 'UnresolvedObject');
+};
+
+// Validates a proposed transaction.
+export const validateProposedTransaction = async (
+  proposedTransaction: Transaction,
+  multisigAddress: string,
+) => {
+  // Get the list of pending proposals.
+  const pendingProposals = await getPendingProposals(multisigAddress);
+
+  if (pendingProposals.length > 10) {
+    throw new ValidationError(
+      'You cannot have more than 10 pending proposals at the same time. Please cancel or execute some proposals before proceeding.',
+    );
+  }
+
+  // Make sure the transaction is fully resolved. We do not currently allow unresolved txs.
+  if (!proposedTransaction.isFullyResolved()) {
+    throw new ValidationError('The transaction is not fully resolved.');
+  }
+
+  //   Fail early on duplicats, avoid doing RPC calls.
+  const digest = await proposedTransaction.getDigest();
+  if (pendingProposals.some((p) => p.digest === digest)) {
+    throw new ValidationError(
+      'A proposal with the same digest already exists.',
+    );
+  }
+
+  // Get all the owned or receiving objects from the pending proposals.
+  // Make sure we do not have any of these in our proposal.
+  const ownedOrReceivingObjects: string[] = [];
+  for (const proposal of pendingProposals) {
+    const tx = Transaction.from(proposal.transactionBytes);
+    ownedOrReceivingObjects.push(...extractOwnedObjects(tx));
+  }
+  //   Query all the owned objects.
+  const allOwnedObjects = await queryAllOwnedObjects(ownedOrReceivingObjects);
+
+  if (
+    allOwnedObjects.some((obj) =>
+      extractOwnedObjects(proposedTransaction).includes(obj.objectId),
+    )
+  ) {
+    throw new ValidationError(
+      'You cannot have re-use any owned or receivingobjects that are already in pending proposals.',
+    );
+  }
 };

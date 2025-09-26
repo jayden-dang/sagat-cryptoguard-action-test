@@ -1,6 +1,6 @@
 {
-  "id": "762ad4f0-0b4f-4e62-916f-59494602cffc",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "77169bef-bcd6-4ce3-9c1a-3b2fd09e6080",
+  "prevId": "c9aabd48-d727-41bb-a496-c0eafb77a6a5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -190,7 +190,20 @@
           "name": "transaction_bytes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "built_transaction_bytes": {
+          "name": "built_transaction_bytes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signatures": {
+          "name": "signatures",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         }
       },
       "indexes": {},
@@ -206,7 +219,13 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "proposals_digest_unique": {
+          "name": "proposals_digest_unique",
+          "nullsNotDistinct": false,
+          "columns": ["digest"]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

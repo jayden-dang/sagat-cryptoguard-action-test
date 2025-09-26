@@ -6,7 +6,30 @@ import {
   index,
   uniqueIndex,
   serial,
+  text,
+  smallint,
+  jsonb,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
+import { ValidationError } from '../errors';
+
+export enum ProposalStatus {
+  PENDING = 0,
+  EXECUTED = 1,
+  CANCELLED = 2,
+}
+
+export const proposalStatusFromString = (status: string) => {
+  switch (status) {
+    case 'PENDING':
+      return ProposalStatus.PENDING;
+    case 'EXECUTED':
+      return ProposalStatus.EXECUTED;
+    case 'CANCELLED':
+      return ProposalStatus.CANCELLED;
+  }
+  throw new ValidationError('Invalid status');
+};
 
 // Multisig addresses table
 const multisigs = pgTable(
@@ -15,6 +38,7 @@ const multisigs = pgTable(
     // The address (combined) of the multisig
     address: varchar('address', { length: 66 }).notNull().primaryKey(),
     isVerified: boolean('is_verified').default(false).notNull(),
+    threshold: integer('threshold').notNull(),
   },
   (table) => [index('multisig_address_idx').on(table.address)],
 );
@@ -51,15 +75,39 @@ const addresses = pgTable('addresses', {
   address: varchar('address', { length: 66 }).notNull().unique(),
 });
 
-// TODO.
+type ProposalSignatures = Record<string, string>;
+
 const proposals = pgTable('proposals', {
+  // The id of the proposal (sequential, so we can keep ordering)
   id: serial('id').primaryKey(),
+  // The multisig address.
   multisigAddress: varchar('multisig_address', { length: 66 })
     .notNull()
     .references(() => multisigs.address),
-  digest: varchar('digest', { length: 66 }).notNull(),
-  status: varchar('status', { length: 255 }).notNull(),
+  // the digest of the proposed transaction (avoid duplicates)
+  digest: varchar('digest', { length: 66 }).notNull().unique(),
+  // The status of the proposal.
+  status: smallint('status').notNull().default(ProposalStatus.PENDING),
+  // The tx bytes of the proposed transaction.
+  transactionBytes: text('transaction_bytes').notNull(),
+  // The "built" tx bytes (after calling tx.build() with a client)
+  builtTransactionBytes: text('built_transaction_bytes').notNull(),
 });
+
+// Store the signatures for a proposal.
+const proposalSignatures = pgTable(
+  'proposal_signatures',
+  {
+    proposalId: integer('proposal_id')
+      .notNull()
+      .references(() => proposals.id),
+    publicKey: varchar('public_key', { length: 66 })
+      .notNull()
+      .references(() => addresses.publicKey),
+    signature: text('signature').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.proposalId, table.publicKey] })],
+);
 
 // Export re-usable types.
 
@@ -67,8 +115,14 @@ export const SchemaAddresses = addresses;
 export const SchemaMultisigs = multisigs;
 export const SchemaMultisigMembers = multisigMembers;
 export const SchemaProposals = proposals;
+export const SchemaProposalSignatures = proposalSignatures;
 
 export type Proposal = typeof proposals.$inferSelect;
 export type Multisig = typeof multisigs.$inferSelect;
 export type MultisigMember = typeof multisigMembers.$inferSelect;
 export type Address = typeof addresses.$inferSelect;
+export type ProposalSignature = typeof proposalSignatures.$inferSelect;
+
+export type ProposalWithSignatures = Proposal & {
+  signatures: ProposalSignature[];
+};

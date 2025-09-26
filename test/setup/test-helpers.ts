@@ -13,10 +13,10 @@ export function generateKeypair() {
 export async function seedAddresses(db: any, count: number) {
   const keypairs = Array.from({ length: count }, generateKeypair);
   await db.insert(SchemaAddresses).values(
-    keypairs.map(kp => ({
+    keypairs.map((kp) => ({
       address: kp.address,
       publicKey: kp.publicKey,
-    }))
+    })),
   );
   return keypairs;
 }

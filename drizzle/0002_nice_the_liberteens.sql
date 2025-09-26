@@ -1,0 +1,1 @@
+ALTER TABLE "proposals" ALTER COLUMN "transaction_bytes" SET NOT NULL;
