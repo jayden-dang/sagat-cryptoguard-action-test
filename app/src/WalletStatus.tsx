@@ -1,23 +1,26 @@
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { Container, Flex, Heading, Text } from "@radix-ui/themes";
-import { OwnedObjects } from "./OwnedObjects";
+import { Button } from "./components/ui/button";
+import { toast } from "sonner";
 
 export function WalletStatus() {
   const account = useCurrentAccount();
 
-  return (
-    <Container my="2">
-      <Heading mb="2">Wallet Status</Heading>
 
+  toast.success("Hello");
+
+  return (
+    <div className="my-2">
+      <div className="mb-2">Wallet Status</div>
+
+      <Button>Test</Button>
       {account ? (
-        <Flex direction="column">
-          <Text>Wallet connected</Text>
-          <Text>Address: {account.address}</Text>
-        </Flex>
+        <div className="flex">
+          <p>Wallet connected</p>
+          <p>Address: {account.address}</p>
+        </div>
       ) : (
-        <Text>Wallet not connected</Text>
+        <div>Wallet not connected</div>
       )}
-      <OwnedObjects />
-    </Container>
+    </div>
   );
 }
