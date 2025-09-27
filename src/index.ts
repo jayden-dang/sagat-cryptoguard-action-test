@@ -9,7 +9,7 @@ const app = new Hono();
 
 // Health check.
 app.get('/', (c) => {
-  return c.text('Multisig API is up and running!');
+  return c.text('Sagat API is up and running!');
 });
 
 app.route('/auth', authRouter);
