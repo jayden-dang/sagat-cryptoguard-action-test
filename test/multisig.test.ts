@@ -1,5 +1,8 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { setupSharedTestEnvironment, createTestApp } from './setup/shared-test-setup';
+import {
+  setupSharedTestEnvironment,
+  createTestApp,
+} from './setup/shared-test-setup';
 import { ApiTestFramework } from './framework/api-test-framework';
 
 setupSharedTestEnvironment();
@@ -35,7 +38,12 @@ describe('Multisig API', () => {
     test('creates multisig with custom name', async () => {
       const { session, users } = await framework.createAuthenticatedSession(2);
 
-      const multisig = await session.createMultisig(users[0], users, 2, 'My Test Multisig');
+      const multisig = await session.createMultisig(
+        users[0],
+        users,
+        2,
+        'My Test Multisig',
+      );
 
       expect(multisig.name).toBe('My Test Multisig');
     });
@@ -44,14 +52,14 @@ describe('Multisig API', () => {
       const { session, users } = await framework.createAuthenticatedSession(2);
 
       // Threshold too high
-      await expect(
-        session.createMultisig(users[0], users, 3)
-      ).rejects.toThrow('Threshold must be less than');
+      await expect(session.createMultisig(users[0], users, 3)).rejects.toThrow(
+        'Threshold must be less than',
+      );
 
       // Threshold too low
-      await expect(
-        session.createMultisig(users[0], users, 1)
-      ).rejects.toThrow('Threshold must be greater than');
+      await expect(session.createMultisig(users[0], users, 1)).rejects.toThrow(
+        'Threshold must be greater than',
+      );
     });
   });
 
@@ -69,7 +77,8 @@ describe('Multisig API', () => {
     });
 
     test('multisig becomes verified when all members accept', async () => {
-      const { session, users, multisig } = await framework.createVerifiedMultisig(2, 2);
+      const { session, users, multisig } =
+        await framework.createVerifiedMultisig(2, 2);
 
       // If createVerifiedMultisig succeeded, the multisig should be verified
       expect(multisig.address).toBeDefined();
@@ -83,7 +92,7 @@ describe('Multisig API', () => {
       const multisig = await session.createMultisig(users[0], users, 2);
 
       await expect(
-        session.acceptMultisig(outsider, multisig.address)
+        session.acceptMultisig(outsider, multisig.address),
       ).rejects.toThrow('not a member');
     });
   });
@@ -93,9 +102,9 @@ describe('Multisig API', () => {
       const { session, users } = await framework.createAuthenticatedSession(2);
       const outsider = session.createUser();
 
-      await expect(
-        session.createMultisig(outsider, users, 2)
-      ).rejects.toThrow('Creator address is not in the list');
+      await expect(session.createMultisig(outsider, users, 2)).rejects.toThrow(
+        'Creator address is not in the list',
+      );
     });
 
     test('all members must be registered', async () => {
@@ -107,7 +116,7 @@ describe('Multisig API', () => {
       await session.connectUser(alice);
 
       await expect(
-        session.createMultisig(alice, [alice, bob], 2)
+        session.createMultisig(alice, [alice, bob], 2),
       ).rejects.toThrow('not registered');
     });
   });

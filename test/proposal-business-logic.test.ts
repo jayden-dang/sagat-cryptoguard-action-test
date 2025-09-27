@@ -1,6 +1,13 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { setupSharedTestEnvironment, createTestApp } from './setup/shared-test-setup';
+import {
+  setupSharedTestEnvironment,
+  createTestApp,
+} from './setup/shared-test-setup';
 import { ApiTestFramework } from './framework/api-test-framework';
+import { Transaction } from '@mysten/sui/transactions';
+import { getLocalClient } from './setup/sui-network';
+
+const client = getLocalClient();
 
 setupSharedTestEnvironment();
 
@@ -14,29 +21,95 @@ describe('Proposal Business Logic', () => {
 
   describe('Transaction Validation', () => {
     test('validates transaction signature before creating proposal', async () => {
-      const { session, users, multisig } = await framework.createFundedVerifiedMultisig(2, 2);
+      const { session, users, multisig } =
+        await framework.createFundedVerifiedMultisig(2, 2);
 
       // Try to create proposal with invalid signature (using wrong keypair)
       const wrongUser = session.createUser();
-      const recipient = '0x1234567890123456789012345678901234567890123456789012345678901234';
+      const recipient =
+        '0x1234567890123456789012345678901234567890123456789012345678901234';
 
-      await expect(
-        session.createProposal(wrongUser, multisig.address, recipient, 1000000)
-      ).rejects.toThrow('not a member');
+      // Build transaction
+      const tx = new Transaction();
+      tx.setSender(multisig.address);
+      const [coin] = tx.splitCoins(tx.gas, [1000000]);
+      tx.transferObjects([coin], recipient);
+
+      const txBytes = await tx.build({ client });
+      const signature = await wrongUser.keypair.signTransaction(txBytes);
+
+      const response = await session.getApp().request('/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          multisigAddress: multisig.address,
+          transactionBytes: txBytes.toBase64(),
+          publicKey: wrongUser.publicKey,
+          signature: signature.signature,
+          description: 'Test proposal',
+        }),
+      });
+
+      expect(response.ok).toBe(false);
+      const error = await response.text();
+      expect(error).toContain('not a member');
     });
 
     test('prevents duplicate proposals with same transaction digest', async () => {
-      const { session, users, multisig } = await framework.createFundedVerifiedMultisig(2, 2);
+      const { session, users, multisig } =
+        await framework.createFundedVerifiedMultisig(2, 2);
 
-      const recipient = '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const recipient =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+
+      // Build identical transactions
+      const tx1 = new Transaction();
+      tx1.setSender(multisig.address);
+      const [coin1] = tx1.splitCoins(tx1.gas, [1000000]);
+      tx1.transferObjects([coin1], recipient);
+
+      const txBytes1 = await tx1.build({ client });
+      const signature1 = await users[0].keypair.signTransaction(txBytes1);
 
       // Create first proposal
-      await session.createProposal(users[0], multisig.address, recipient, 1000000, 'First proposal');
+      const response1 = await session.getApp().request('/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          multisigAddress: multisig.address,
+          transactionBytes: txBytes1.toBase64(),
+          publicKey: users[0].publicKey,
+          signature: signature1.signature,
+          description: 'First proposal',
+        }),
+      });
+      expect(response1.ok).toBe(true);
+
+      // Build identical transaction
+      const tx2 = new Transaction();
+      tx2.setSender(multisig.address);
+      const [coin2] = tx2.splitCoins(tx2.gas, [1000000]);
+      tx2.transferObjects([coin2], recipient);
+
+      const txBytes2 = await tx2.build({ client });
+      const signature2 = await users[0].keypair.signTransaction(txBytes2);
 
       // Try to create identical proposal - should fail
-      await expect(
-        session.createProposal(users[0], multisig.address, recipient, 1000000, 'Duplicate proposal')
-      ).rejects.toThrow('same digest');
+      const response2 = await session.getApp().request('/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          multisigAddress: multisig.address,
+          transactionBytes: txBytes2.toBase64(),
+          publicKey: users[0].publicKey,
+          signature: signature2.signature,
+          description: 'Duplicate proposal',
+        }),
+      });
+
+      expect(response2.ok).toBe(false);
+      const error = await response2.text();
+      expect(error).toContain('same digest');
     });
   });
 
@@ -45,17 +118,52 @@ describe('Proposal Business Logic', () => {
       const { session, users } = await framework.createAuthenticatedSession(3);
 
       // Create 3-member multisig with different weights: [1, 2, 1], threshold 3
-      const multisig = await session.createCustomMultisig(users[0], users, [1, 2, 1], 3, undefined, true);
+      const multisig = await session.createCustomMultisig(
+        users[0],
+        users,
+        [1, 2, 1],
+        3,
+        undefined,
+        true,
+      );
 
       // Verify multisig (accept invitations)
       await session.acceptMultisig(users[1], multisig.address);
       await session.acceptMultisig(users[2], multisig.address);
 
-      const recipient = '0x3333333333333333333333333333333333333333333333333333333333333333';
-      const proposal = await session.createProposal(users[0], multisig.address, recipient, 500000);
+      const recipient =
+        '0x3333333333333333333333333333333333333333333333333333333333333333';
+
+      // Build and submit proposal
+      const tx = new Transaction();
+      tx.setSender(multisig.address);
+      const [coin] = tx.splitCoins(tx.gas, [500000]);
+      tx.transferObjects([coin], recipient);
+
+      const txBytes = await tx.build({ client });
+      const signature = await users[0].keypair.signTransaction(txBytes);
+
+      const response = await session.getApp().request('/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          multisigAddress: multisig.address,
+          transactionBytes: txBytes.toBase64(),
+          publicKey: users[0].publicKey,
+          signature: signature.signature,
+          description: 'Test proposal',
+        }),
+      });
+
+      expect(response.ok).toBe(true);
+      const proposal = await response.json();
 
       // Alice voted (weight 1), now Bob votes (weight 2) = total 3, should reach threshold
-      const voteResult = await session.voteOnProposal(users[1], proposal.id, proposal.transactionBytes);
+      const voteResult = await session.voteOnProposal(
+        users[1],
+        proposal.id,
+        proposal.transactionBytes,
+      );
 
       expect(voteResult.hasReachedThreshold).toBe(true);
     });
@@ -64,17 +172,51 @@ describe('Proposal Business Logic', () => {
       const { session, users } = await framework.createAuthenticatedSession(3);
 
       // Create multisig with weights [1, 1, 1], threshold 3
-      const multisig = await session.createCustomMultisig(users[0], users, [1, 1, 1], 3, undefined, true);
+      const multisig = await session.createCustomMultisig(
+        users[0],
+        users,
+        [1, 1, 1],
+        3,
+        undefined,
+        true,
+      );
 
       // Verify multisig
       await session.acceptMultisig(users[1], multisig.address);
       await session.acceptMultisig(users[2], multisig.address);
 
-      const proposal = await session.createProposal(users[0], multisig.address,
-        '0x4444444444444444444444444444444444444444444444444444444444444444', 500000);
+      // Build and submit proposal
+      const tx = new Transaction();
+      tx.setSender(multisig.address);
+      const [coin] = tx.splitCoins(tx.gas, [500000]);
+      tx.transferObjects(
+        [coin],
+        '0x4444444444444444444444444444444444444444444444444444444444444444',
+      );
+
+      const txBytes = await tx.build({ client });
+      const signature = await users[0].keypair.signTransaction(txBytes);
+
+      const response = await session.getApp().request('/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          multisigAddress: multisig.address,
+          transactionBytes: txBytes.toBase64(),
+          publicKey: users[0].publicKey,
+          signature: signature.signature,
+        }),
+      });
+
+      expect(response.ok).toBe(true);
+      const proposal = await response.json();
 
       // Only Alice (1) + Bob (1) = 2 votes, need 3 for threshold
-      const voteResult = await session.voteOnProposal(users[1], proposal.id, proposal.transactionBytes);
+      const voteResult = await session.voteOnProposal(
+        users[1],
+        proposal.id,
+        txBytes.toBase64(),
+      );
 
       expect(voteResult.hasReachedThreshold).toBe(false);
     });
@@ -82,14 +224,38 @@ describe('Proposal Business Logic', () => {
 
   describe('Vote Validation', () => {
     test('prevents duplicate voting by same member', async () => {
-      const { session, users, multisig } = await framework.createFundedVerifiedMultisig(2, 2);
+      const { session, users, multisig } =
+        await framework.createFundedVerifiedMultisig(2, 2);
 
-      const proposal = await session.createProposal(users[0], multisig.address,
-        '0x5555555555555555555555555555555555555555555555555555555555555555', 500000);
+      // Build and submit proposal
+      const tx = new Transaction();
+      tx.setSender(multisig.address);
+      const [coin] = tx.splitCoins(tx.gas, [500000]);
+      tx.transferObjects(
+        [coin],
+        '0x5555555555555555555555555555555555555555555555555555555555555555',
+      );
+
+      const txBytes = await tx.build({ client });
+      const signature = await users[0].keypair.signTransaction(txBytes);
+
+      const response = await session.getApp().request('/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          multisigAddress: multisig.address,
+          transactionBytes: txBytes.toBase64(),
+          publicKey: users[0].publicKey,
+          signature: signature.signature,
+        }),
+      });
+
+      expect(response.ok).toBe(true);
+      const proposal = await response.json();
 
       // Try to vote again with the proposer (who already voted during creation)
       await expect(
-        session.voteOnProposal(users[0], proposal.id, proposal.transactionBytes)
+        session.voteOnProposal(users[0], proposal.id, txBytes.toBase64()),
       ).rejects.toThrow('already voted');
     });
   });
@@ -99,36 +265,61 @@ describe('Proposal Business Logic', () => {
       const { session, users } = await framework.createAuthenticatedSession(2);
 
       // Create multisig but don't have all members accept
-      const multisig = await session.createMultisig(users[0], users, 2, undefined, true);
+      const multisig = await session.createMultisig(
+        users[0],
+        users,
+        2,
+        undefined,
+        true,
+      );
       // Only creator accepted, Bob hasn't accepted yet
 
       await expect(
-        session.createProposal(users[0], multisig.address,
-          '0x7777777777777777777777777777777777777777777777777777777777777777', 500000)
+        session.createSimpleTransferProposal(
+          users[0],
+          multisig.address,
+          '0x7777777777777777777777777777777777777777777777777777777777777777',
+          500000,
+        ),
       ).rejects.toThrow('not verified');
     });
 
     test('only multisig members can vote on proposals', async () => {
-      const { session, users, multisig } = await framework.createFundedVerifiedMultisig(2, 2);
+      const { session, users, multisig } =
+        await framework.createFundedVerifiedMultisig(2, 2);
 
-      const proposal = await session.createProposal(users[0], multisig.address,
-        '0x8888888888888888888888888888888888888888888888888888888888888888', 500000);
+      const proposal = await session.createSimpleTransferProposal(
+        users[0],
+        multisig.address,
+        '0x8888888888888888888888888888888888888888888888888888888888888888',
+        500000,
+      );
 
       // Create outsider who is not a multisig member
       const outsider = session.createUser();
 
       await expect(
-        session.voteOnProposal(outsider, proposal.id, proposal.transactionBytes)
+        session.voteOnProposal(
+          outsider,
+          proposal.id,
+          proposal.transactionBytes,
+        ),
       ).rejects.toThrow('not a member');
     });
   });
 
   describe('Proposal State Management', () => {
     test('creates proposal with correct initial state', async () => {
-      const { session, users, multisig } = await framework.createFundedVerifiedMultisig(2, 2);
+      const { session, users, multisig } =
+        await framework.createFundedVerifiedMultisig(2, 2);
 
-      const proposal = await session.createProposal(users[0], multisig.address,
-        '0x9999999999999999999999999999999999999999999999999999999999999999', 1000000, 'Test proposal');
+      const proposal = await session.createSimpleTransferProposal(
+        users[0],
+        multisig.address,
+        '0x9999999999999999999999999999999999999999999999999999999999999999',
+        1000000,
+        'Test proposal',
+      );
 
       expect(proposal.id).toBeDefined();
       expect(proposal.transactionBytes).toBeDefined();
@@ -138,13 +329,22 @@ describe('Proposal Business Logic', () => {
     });
 
     test('tracks signatures and calculates threshold correctly', async () => {
-      const { session, users, multisig } = await framework.createFundedVerifiedMultisig(3, 2);
+      const { session, users, multisig } =
+        await framework.createFundedVerifiedMultisig(3, 2);
 
-      const proposal = await session.createProposal(users[0], multisig.address,
-        '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 750000);
+      const proposal = await session.createSimpleTransferProposal(
+        users[0],
+        multisig.address,
+        '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        750000,
+      );
 
       // First additional vote - should reach threshold (proposer + 1 vote = 2 votes, threshold = 2)
-      const voteResult = await session.voteOnProposal(users[1], proposal.id, proposal.transactionBytes);
+      const voteResult = await session.voteOnProposal(
+        users[1],
+        proposal.id,
+        proposal.transactionBytes,
+      );
       expect(voteResult.hasReachedThreshold).toBe(true);
     });
   });

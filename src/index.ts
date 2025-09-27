@@ -4,12 +4,13 @@ import multisigRouter from './routes/multisig';
 import { ValidationError } from './errors';
 import proposalsRouter from './routes/proposals';
 import authRouter from './routes/auth';
+import { SUI_ENV } from './db/env';
 
 const app = new Hono();
 
 // Health check.
 app.get('/', (c) => {
-  return c.text('Sagat API is up and running!');
+  return c.text(`Sagat API is up and running on network "${SUI_ENV}"`);
 });
 
 app.route('/auth', authRouter);

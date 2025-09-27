@@ -5,11 +5,13 @@ This directory contains a comprehensive test framework for the multisig API, pro
 ## Architecture
 
 ### Shared Test Setup (`setup/shared-test-setup.ts`)
+
 - **`setupSharedTestEnvironment()`**: Sets up shared resources like network checking and database pool
 - **`createTestApp()`**: Creates a fresh Hono app instance for each test with clean database state
 - Each test gets complete isolation with its own app instance and database state
 
 ### API Test Framework (`framework/api-test-framework.ts`)
+
 - **`ApiTestFramework`**: Main framework class that manages test scenarios
 - **`TestSession`**: Represents a user session with authentication state and operations
 - **`TestUser`**: Interface for test users with keypairs, public keys, and addresses
@@ -17,18 +19,25 @@ This directory contains a comprehensive test framework for the multisig API, pro
 ## Key Features
 
 ### Complete Isolation
+
 Each test gets its own:
+
 - Fresh Hono app instance
 - Clean database state
 - Independent authentication sessions
 - No shared state between tests
 
 ### Session-Based Testing
+
 ```typescript
-const { session, users, multisig } = await framework.createVerifiedMultisig(2, 2);
+const { session, users, multisig } = await framework.createVerifiedMultisig(
+  2,
+  2,
+);
 ```
 
 ### High-Level Helpers
+
 - `createAuthenticatedSession(userCount)`: Creates authenticated users
 - `createVerifiedMultisig(userCount, threshold, name, fund)`: Creates fully verified multisig (no funding by default)
 - `createFundedVerifiedMultisig(userCount, threshold, name)`: Creates funded + verified multisig (for proposal tests)
@@ -36,9 +45,10 @@ const { session, users, multisig } = await framework.createVerifiedMultisig(2, 2
 - `session.createProposal()`, `session.voteOnProposal()`: Proposal operations
 
 ### Per-Test Setup
+
 ```typescript
 beforeEach(async () => {
-  const app = await createTestApp();  // Fresh app with clean state
+  const app = await createTestApp(); // Fresh app with clean state
   framework = new ApiTestFramework(app);
 });
 ```
@@ -46,7 +56,9 @@ beforeEach(async () => {
 ## Test Structure
 
 ### Main Test Suite (`multisig-api.test.ts`)
+
 Comprehensive integration tests covering:
+
 - **Authentication**: User auth and address registration
 - **Multisig Management**: Creation and verification
 - **Proposal Workflow**: Creation, voting, and thresholds
@@ -54,12 +66,14 @@ Comprehensive integration tests covering:
 - **Error Handling**: Invalid operations and edge cases
 
 ### Test Suites
+
 - **`multisig-api.test.ts`**: Comprehensive integration tests for the entire API
 - **`sui-network.test.ts`**: Network utilities and connection tests
 
 ## Usage Examples
 
 ### Basic Authentication Test
+
 ```typescript
 test('single user auth and address registration', async () => {
   const { session, users } = await framework.createAuthenticatedSession(1);
@@ -73,15 +87,27 @@ test('single user auth and address registration', async () => {
 ```
 
 ### Complete Workflow Test
+
 ```typescript
 test('create proposal and collect sufficient votes', async () => {
-  const { session, users, multisig } = await framework.createVerifiedMultisig(2, 2);
-
-  const proposal = await session.createProposal(
-    users[0], multisig.address, recipient, 1000000, 'Send 1 MIST'
+  const { session, users, multisig } = await framework.createVerifiedMultisig(
+    2,
+    2,
   );
 
-  const voteResult = await session.voteOnProposal(users[1], proposal.id, proposal.transactionBytes);
+  const proposal = await session.createProposal(
+    users[0],
+    multisig.address,
+    recipient,
+    1000000,
+    'Send 1 MIST',
+  );
+
+  const voteResult = await session.voteOnProposal(
+    users[1],
+    proposal.id,
+    proposal.transactionBytes,
+  );
   expect(voteResult.hasReachedThreshold).toBe(true);
 });
 ```
@@ -99,15 +125,18 @@ test('create proposal and collect sufficient votes', async () => {
 ## Performance
 
 ### ⚡ Fast Unit Tests (No Funding)
+
 - **Auth/Addresses/Multisig**: ~5-50ms each (database operations only)
 - **Total for 20 tests**: ~1 second
 - **When to use**: Testing API logic, validation, authentication flow
 
 ### 🐌 Blockchain Tests (With Funding)
+
 - **Proposals**: ~400ms-2s each (real Sui network operations)
 - **When to use**: Testing actual transaction creation, voting, execution
 
 ### 🎯 Speed Strategy
+
 ```typescript
 // Fast - no funding needed for multisig validation tests
 const { multisig } = await framework.createVerifiedMultisig(2, 2);

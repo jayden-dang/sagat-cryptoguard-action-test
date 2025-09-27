@@ -29,8 +29,13 @@ const proposalsRouter = new Hono();
 
 // Create a new proposed multi-sig transaction.
 proposalsRouter.post('/', async (c) => {
-  const { multisigAddress, transactionBytes, publicKey, signature, description } =
-    await c.req.json();
+  const {
+    multisigAddress,
+    transactionBytes,
+    publicKey,
+    signature,
+    description,
+  } = await c.req.json();
 
   if (!(await isMultisigMember(multisigAddress, publicKey)))
     throw new ValidationError('Proposer is not a member of the multisig');
@@ -100,7 +105,7 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
   if (proposal.status !== ProposalStatus.PENDING)
     throw new ValidationError('Proposal is not pending');
 
-  if (proposal.signatures.some(sig => sig?.publicKey === publicKey))
+  if (proposal.signatures.some((sig) => sig?.publicKey === publicKey))
     throw new ValidationError('Voter has already voted for this proposal');
 
   const pubKey = await parsePublicKey(publicKey);

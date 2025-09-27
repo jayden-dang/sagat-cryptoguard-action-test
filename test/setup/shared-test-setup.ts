@@ -1,7 +1,12 @@
 import { beforeAll, afterAll, mock } from 'bun:test';
 import { Hono } from 'hono';
-import { setupTestDatabase, teardownTestDatabase, clearTestData } from './test-db';
+import {
+  setupTestDatabase,
+  teardownTestDatabase,
+  clearTestData,
+} from './test-db';
 import { isNetworkRunning } from './sui-network';
+import * as env from '../../src/db/env';
 import type { Pool } from 'pg';
 
 let testDbPool: Pool;
@@ -33,7 +38,9 @@ export const setupSharedTestEnvironment = () => {
 export const createTestApp = async (): Promise<Hono> => {
   // Use shared database pool instead of creating new database
   if (!testDbPool) {
-    throw new Error('Test database pool not initialized. Call setupSharedTestEnvironment() first.');
+    throw new Error(
+      'Test database pool not initialized. Call setupSharedTestEnvironment() first.',
+    );
   }
 
   const { drizzle } = await import('drizzle-orm/node-postgres');
@@ -46,9 +53,7 @@ export const createTestApp = async (): Promise<Hono> => {
 
   // Mock modules with fresh db instance
   mock.module('../../src/db', () => ({ db }));
-  mock.module('../../src/db/env', () => ({
-    JWT_SECRET: 'test-secret-key-for-testing',
-  }));
+  mock.module('../../src/db/env', () => env);
 
   // Create fresh router instances
   const authRouter = (await import('../../src/routes/auth')).default;

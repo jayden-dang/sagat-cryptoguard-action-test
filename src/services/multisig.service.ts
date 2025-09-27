@@ -120,7 +120,10 @@ export const jwtHasMultisigMemberAccess = async (
 ) => {
   const whereConditions = [
     eq(SchemaMultisigMembers.multisigAddress, msigAddress),
-    inArray(SchemaMultisigMembers.publicKey, publicKeys.map((key) => key.toBase64())),
+    inArray(
+      SchemaMultisigMembers.publicKey,
+      publicKeys.map((key) => key.toBase64()),
+    ),
   ];
 
   if (checkAcceptance) {
@@ -133,7 +136,6 @@ export const jwtHasMultisigMemberAccess = async (
 
   return !!member;
 };
-
 
 // Get a list of pending proposals for a given multisig address.
 export const getPendingProposals = async (multisigAddress: string) => {
@@ -169,7 +171,7 @@ export const validateProposedTransaction = async (
   // Get the list of pending proposals.
   const pendingProposals = await getPendingProposals(multisigAddress);
 
-  if (pendingProposals.length > 10) {
+  if (pendingProposals.length >= 10) {
     throw new ValidationError(
       'You cannot have more than 10 pending proposals at the same time. Please cancel or execute some proposals before proceeding.',
     );

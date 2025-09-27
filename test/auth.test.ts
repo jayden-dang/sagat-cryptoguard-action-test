@@ -1,5 +1,8 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { setupSharedTestEnvironment, createTestApp } from './setup/shared-test-setup';
+import {
+  setupSharedTestEnvironment,
+  createTestApp,
+} from './setup/shared-test-setup';
 import { ApiTestFramework } from './framework/api-test-framework';
 
 setupSharedTestEnvironment();
@@ -86,7 +89,9 @@ describe('Auth API', () => {
 
       expect(session1.getConnectedUsers()).toHaveLength(1);
       expect(session2.getConnectedUsers()).toHaveLength(1);
-      expect(session1.getConnectedUsers()[0].address).not.toBe(session2.getConnectedUsers()[0].address);
+      expect(session1.getConnectedUsers()[0].address).not.toBe(
+        session2.getConnectedUsers()[0].address,
+      );
     });
   });
 });

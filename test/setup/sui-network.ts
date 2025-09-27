@@ -51,12 +51,11 @@ export async function isNetworkRunning(): Promise<boolean> {
  */
 export async function fundAddress(address: string): Promise<boolean> {
   try {
-    const normalizedAddress = normalizeSuiAddress(address);
     const faucetHost = getFaucetHost('localnet');
 
     const result = await requestSuiFromFaucetV2({
       host: faucetHost,
-      recipient: normalizedAddress,
+      recipient: normalizeSuiAddress(address),
     });
 
     return true;
@@ -74,7 +73,6 @@ export function createTestKeypair(): Ed25519Keypair {
   return new Ed25519Keypair();
 }
 
-
 /**
  * Create multiple test keypairs
  */
@@ -91,11 +89,11 @@ export function getTestKeypairs(): Ed25519Keypair[] {
   const testMnemonics = [
     'film crazy soon outside stand loop subway crumble thrive popular green nuclear struggle pistol arm wife phrase warfare march wheat nephew ask sunny firm',
     'require decline left thought grid priority false tiny gasp angle royal system attack beef setup reward aunt skill wasp tray vital bounce inflict level',
-    'organ crash swim stick traffic remember army arctic mesh slice swear summer police vast chaos cradle squirrel hood useless evidence pet hub soap lake'
+    'organ crash swim stick traffic remember army arctic mesh slice swear summer police vast chaos cradle squirrel hood useless evidence pet hub soap lake',
   ];
 
-  return testMnemonics.map(mnemonic =>
-    Ed25519Keypair.deriveKeypair(mnemonic)
+  return testMnemonics.map((mnemonic) =>
+    Ed25519Keypair.deriveKeypair(mnemonic),
   );
 }
 

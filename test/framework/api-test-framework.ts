@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { getLocalClient, fundAddress } from '../setup/sui-network';
+import { MIST_PER_SUI } from '@mysten/sui/utils';
 
 const client = getLocalClient();
 
@@ -64,13 +65,18 @@ export class TestSession {
     });
 
     if (!response.ok) {
-      throw new Error(`Auth failed for user ${user.address}: ${response.status}`);
+      throw new Error(
+        `Auth failed for user ${user.address}: ${response.status}`,
+      );
     }
 
-    this.cookie = response.headers.get('set-cookie')?.match(/connected-wallet=([^;]+)/)?.[0] || '';
+    this.cookie =
+      response.headers
+        .get('set-cookie')
+        ?.match(/connected-wallet=([^;]+)/)?.[0] || '';
 
     // Track connected user if not already tracked
-    if (!this.users.find(u => u.address === user.address)) {
+    if (!this.users.find((u) => u.address === user.address)) {
       this.users.push(user);
     }
   }
@@ -90,7 +96,7 @@ export class TestSession {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: this.cookie
+        Cookie: this.cookie,
       },
     });
 
@@ -104,9 +110,16 @@ export class TestSession {
     members: TestUser[],
     threshold: number,
     name?: string,
-    fund: boolean = false
+    fund: boolean = false,
   ): Promise<TestMultisig> {
-    return this.createCustomMultisig(creator, members, members.map(() => 1), threshold, name, fund);
+    return this.createCustomMultisig(
+      creator,
+      members,
+      members.map(() => 1),
+      threshold,
+      name,
+      fund,
+    );
   }
 
   async createCustomMultisig(
@@ -115,14 +128,14 @@ export class TestSession {
     weights: number[],
     threshold: number,
     name?: string,
-    fund: boolean = false
+    fund: boolean = false,
   ): Promise<TestMultisig> {
     const response = await this.app.request('/multisig', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         publicKey: creator.publicKey,
-        addresses: members.map(m => m.address),
+        addresses: members.map((m) => m.address),
         weights,
         threshold,
         name,
@@ -131,50 +144,93 @@ export class TestSession {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Multisig creation failed: ${response.status} - ${error}`);
+      throw new Error(
+        `Multisig creation failed: ${response.status} - ${error}`,
+      );
     }
 
     const { multisig } = await response.json();
 
     // Only fund if explicitly requested
-    if (fund) {
-      await fundAddress(multisig.address);
-    }
+    if (fund) await fundAddress(multisig.address);
 
     return multisig;
   }
 
-  async fundMultisig(multisigAddress: string): Promise<void> {
-    await fundAddress(multisigAddress);
+  async fundsForAddress(address: string): Promise<void> {
+    await fundAddress(address);
   }
 
-  async acceptMultisig(member: TestUser, multisigAddress: string): Promise<void> {
+  async multiCoinsToAddress(
+    keypair: Ed25519Keypair,
+    recipient: string,
+    count: number,
+    totalPerCoin: number = 0.1 * Number(MIST_PER_SUI),
+  ): Promise<void> {
+    await this.fundsForAddress(keypair.toSuiAddress());
+
+    const tx = new Transaction();
+    tx.setSender(keypair.toSuiAddress());
+    for (let i = 0; i < count; i++) {
+      tx.moveCall({
+        target: '0x2::pay::split_and_transfer',
+        arguments: [
+          tx.gas,
+          tx.pure.u64(totalPerCoin),
+          tx.pure.address(recipient),
+        ],
+        typeArguments: ['0x2::sui::SUI'],
+      });
+    }
+    // use the first user's gas to send a few sui to the multisig.
+    const result = await keypair.signAndExecuteTransaction({
+      transaction: tx,
+      client,
+    });
+
+    await client.waitForTransaction({ digest: result.digest });
+  }
+
+  async acceptMultisig(
+    member: TestUser,
+    multisigAddress: string,
+  ): Promise<void> {
     const message = `Participating in multisig ${multisigAddress}`;
     const signature = await this.signMessage(member.keypair, message);
 
-    const response = await this.app.request(`/multisig/${multisigAddress}/accept`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        publicKey: member.publicKey,
-        signature: signature,
-      }),
-    });
+    const response = await this.app.request(
+      `/multisig/${multisigAddress}/accept`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publicKey: member.publicKey,
+          signature: signature,
+        }),
+      },
+    );
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Multisig acceptance failed: ${response.status} - ${error}`);
+      throw new Error(
+        `Multisig acceptance failed: ${response.status} - ${error}`,
+      );
     }
   }
 
-  async createProposal(
+  // Expose app for direct API calls when needed
+  getApp(): Hono {
+    return this.app;
+  }
+
+  // Simple helper for repetitive test transfers - builds transaction inline for clarity
+  async createSimpleTransferProposal(
     proposer: TestUser,
     multisigAddress: string,
     recipient: string,
     amount: number,
-    description?: string
-  ): Promise<TestProposal> {
-    // Create transaction
+    description?: string,
+  ): Promise<{ id: number; transactionBytes: string }> {
     const tx = new Transaction();
     tx.setSender(multisigAddress);
     const [coin] = tx.splitCoins(tx.gas, [amount]);
@@ -197,7 +253,9 @@ export class TestSession {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Proposal creation failed: ${response.status} - ${error}`);
+      throw new Error(
+        `Proposal creation failed: ${response.status} - ${error}`,
+      );
     }
 
     const proposal = await response.json();
@@ -210,7 +268,7 @@ export class TestSession {
   async voteOnProposal(
     voter: TestUser,
     proposalId: number,
-    transactionBytes: string
+    transactionBytes: string,
   ): Promise<{ hasReachedThreshold: boolean }> {
     const txBytes = Transaction.from(transactionBytes);
     const builtTx = await txBytes.build({ client });
@@ -264,8 +322,8 @@ export class TestSession {
       const publicKeysFromJWT = payload.publicKeys || [];
 
       // Map JWT public keys back to our test users
-      return this.users.filter(user =>
-        publicKeysFromJWT.includes(user.publicKey)
+      return this.users.filter((user) =>
+        publicKeysFromJWT.includes(user.publicKey),
       );
     } catch (error) {
       console.warn('Failed to decode JWT:', error);
@@ -307,7 +365,7 @@ export class ApiTestFramework {
     userCount: number = 2,
     threshold?: number,
     name?: string,
-    fund: boolean = false
+    fund: boolean = false,
   ): Promise<{
     session: TestSession;
     users: TestUser[];
@@ -316,7 +374,13 @@ export class ApiTestFramework {
     const { session, users } = await this.createAuthenticatedSession(userCount);
     const actualThreshold = threshold || userCount;
 
-    const multisig = await session.createMultisig(users[0], users, actualThreshold, name, fund);
+    const multisig = await session.createMultisig(
+      users[0],
+      users,
+      actualThreshold,
+      name,
+      fund,
+    );
 
     // Accept for all non-creator members
     for (let i = 1; i < users.length; i++) {
@@ -329,7 +393,7 @@ export class ApiTestFramework {
   async createFundedVerifiedMultisig(
     userCount: number = 2,
     threshold?: number,
-    name?: string
+    name?: string,
   ): Promise<{
     session: TestSession;
     users: TestUser[];

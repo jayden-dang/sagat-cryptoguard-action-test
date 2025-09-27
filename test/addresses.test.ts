@@ -1,5 +1,8 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { setupSharedTestEnvironment, createTestApp } from './setup/shared-test-setup';
+import {
+  setupSharedTestEnvironment,
+  createTestApp,
+} from './setup/shared-test-setup';
 import { ApiTestFramework } from './framework/api-test-framework';
 
 setupSharedTestEnvironment();
@@ -27,7 +30,7 @@ describe('Addresses API', () => {
       expect(users).toHaveLength(3);
 
       // All users should have unique addresses
-      const addresses = users.map(u => u.address);
+      const addresses = users.map((u) => u.address);
       const uniqueAddresses = new Set(addresses);
       expect(uniqueAddresses.size).toBe(3);
     });
