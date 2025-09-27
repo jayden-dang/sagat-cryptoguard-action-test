@@ -1,8 +1,8 @@
 // TODO: should we bound this to a single env (have `testnet.mysten` and `mainnet.mysten` or not?)
 import { SuiClient, ObjectOwner, SuiObjectData } from '@mysten/sui/client';
-export const suiClient = new SuiClient({
-  url: process.env.SUI_RPC_URL || 'https://fullnode.testnet.sui.io:443',
-});
+import { SUI_RPC_URL } from '../db/env';
+
+export const suiClient = new SuiClient({ url: SUI_RPC_URL });
 
 // Query a list of objects
 // TODO: use a data loader to share queries across requests.
