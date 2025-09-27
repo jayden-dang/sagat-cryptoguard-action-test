@@ -10,6 +10,12 @@ To run:
 bun run dev
 ```
 
+To test:
+
+```sh
+bun test:e2e
+```
+
 open http://localhost:3000
 
 ## Testing proposals (requires localnet network running)
