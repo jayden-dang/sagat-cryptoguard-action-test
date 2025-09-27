@@ -8,21 +8,25 @@ import {
   text,
   smallint,
   primaryKey,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { ValidationError } from '../errors';
 
 export enum ProposalStatus {
   PENDING = 0,
-  EXECUTED = 1,
-  CANCELLED = 2,
+  CANCELLED = 1,
+  SUCCESS = 2,
+  FAILURE = 3,
 }
 
 export const proposalStatusFromString = (status: string) => {
   switch (status) {
     case 'PENDING':
       return ProposalStatus.PENDING;
-    case 'EXECUTED':
-      return ProposalStatus.EXECUTED;
+    case 'SUCCESS':
+      return ProposalStatus.SUCCESS;
+    case 'FAILURE':
+      return ProposalStatus.FAILURE;
     case 'CANCELLED':
       return ProposalStatus.CANCELLED;
   }
@@ -37,6 +41,7 @@ const multisigs = pgTable(
     address: text('address').notNull().primaryKey(),
     isVerified: boolean('is_verified').default(false).notNull(),
     threshold: integer('threshold').notNull(),
+    name: varchar('name', { length: 255 }),
   },
   (table) => [index('multisig_address_idx').on(table.address)],
 );
@@ -75,8 +80,6 @@ const addresses = pgTable('addresses', {
   address: text('address').notNull().unique(),
 });
 
-type ProposalSignatures = Record<string, string>;
-
 const proposals = pgTable('proposals', {
   // The id of the proposal (sequential, so we can keep ordering)
   id: serial('id').primaryKey(),
@@ -94,6 +97,8 @@ const proposals = pgTable('proposals', {
   builtTransactionBytes: text('built_transaction_bytes').notNull(),
   // The address of the proposer.
   proposerAddress: text('proposer_address').notNull(),
+  // A description for the proposal.
+  description: varchar('description', { length: 1000 }),
 });
 
 // Store the signatures for a proposal.

@@ -3,6 +3,7 @@ import { Context, Hono } from 'hono';
 import {
   getMultisig,
   isMultisigMember,
+  jwtHasMultisigMemberAccess,
   validateProposedTransaction,
 } from '../services/multisig.service';
 import { ValidationError } from '../errors';
@@ -21,14 +22,14 @@ import {
   getProposalsByMultisigAddress,
 } from '../services/proposals.service';
 import { validatePersonalMessage } from '../services/addresses.service';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { AuthEnv, authMiddleware } from '../services/auth.service';
 
 const proposalsRouter = new Hono();
 
 // Create a new proposed multi-sig transaction.
 proposalsRouter.post('/', async (c) => {
-  const { multisigAddress, transactionBytes, publicKey, signature } =
+  const { multisigAddress, transactionBytes, publicKey, signature, description } =
     await c.req.json();
 
   if (!(await isMultisigMember(multisigAddress, publicKey)))
@@ -50,9 +51,7 @@ proposalsRouter.post('/', async (c) => {
   await validateProposedTransaction(proposedTransaction, multisigAddress);
 
   // Build the transaction to verify the supplied user signature
-  const built = await proposedTransaction.build({
-    client: suiClient,
-  });
+  const built = await proposedTransaction.build({ client: suiClient });
 
   // Verify the supplied user signature.
   const pubKey = await parsePublicKey(publicKey);
@@ -72,7 +71,8 @@ proposalsRouter.post('/', async (c) => {
         digest: await proposedTransaction.getDigest(),
         transactionBytes,
         builtTransactionBytes: built.toBase64(),
-        proposerAddress: publicKey.toSuiAddress(),
+        proposerAddress: pubKey.toSuiAddress(),
+        description,
       })
       .returning();
 
@@ -100,7 +100,7 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
   if (proposal.status !== ProposalStatus.PENDING)
     throw new ValidationError('Proposal is not pending');
 
-  if (proposal.signatures[publicKey])
+  if (proposal.signatures.some(sig => sig?.publicKey === publicKey))
     throw new ValidationError('Voter has already voted for this proposal');
 
   const pubKey = await parsePublicKey(publicKey);
@@ -166,23 +166,42 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 });
 
 // Verify the execution of a proposal.
-proposalsRouter.post('/:proposalId/verify', (c) => {
-  // 1. Check if proposal exists.
-  // 2. Verify that the proposal has been executed.
-  // 3. Update the proposal status to "executed".
-  return c.text('Verifying execution!');
+proposalsRouter.post('/:proposalId/verify', async (c: Context<AuthEnv>) => {
+  const publicKeys = c.get('publicKeys');
+  const { proposalId } = c.req.param();
+  const proposal = await getProposalById(parseInt(proposalId));
+
+  if (!(await jwtHasMultisigMemberAccess(proposal.multisigAddress, publicKeys)))
+    throw new ValidationError('Not a member of the multisig');
+
+  if (proposal.status !== ProposalStatus.PENDING)
+    return c.json({ verified: true });
+
+  const tx = await suiClient.getTransactionBlock({
+    digest: proposal.digest,
+    options: { showEffects: true },
+  });
+
+  if (!tx.checkpoint || !tx.effects)
+    throw new ValidationError('Transaction not found');
+
+  const isSuccess = tx.effects.status.status === 'success';
+
+  await db
+    .update(SchemaProposals)
+    .set({
+      status: isSuccess ? ProposalStatus.SUCCESS : ProposalStatus.FAILURE,
+    })
+    .where(eq(SchemaProposals.id, proposal.id));
+
+  return c.json({ verified: true });
 });
 
 proposalsRouter.get('/', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
-  const { multisigAddress, status, activeAddress } = c.req.query();
+  const { multisigAddress, status } = c.req.query();
 
-  const pubKey = publicKeys.find((key) => key.toSuiAddress() === activeAddress);
-
-  if (!pubKey)
-    throw new ValidationError('Not authorized to access this multisig');
-
-  if (!(await isMultisigMember(multisigAddress, pubKey.toBase64())))
+  if (!(await jwtHasMultisigMemberAccess(multisigAddress, publicKeys)))
     throw new ValidationError('Not a member of the multisig');
 
   const proposals = await getProposalsByMultisigAddress(

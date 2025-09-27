@@ -1,12 +1,16 @@
 import { Hono } from 'hono';
-import { parsePublicKey } from '../utils/pubKey';
-import { SchemaAddresses } from '../db/schema';
+import {
+  MultisigMember,
+  SchemaAddresses,
+  SchemaMultisigMembers,
+} from '../db/schema';
 import { db } from '../db';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { authMiddleware, AuthEnv } from '../services/auth.service';
 import { Context } from 'hono';
 
 const addressesRouter = new Hono();
+
 /**
  * Register addresses from authenticated JWT context.
  * No signature required - uses JWT authentication.
@@ -14,6 +18,8 @@ const addressesRouter = new Hono();
 addressesRouter.post('/', authMiddleware, async (c: Context<AuthEnv>) => {
   // Get all public keys from the JWT
   const publicKeys = c.get('publicKeys');
+
+  // const { extraPublicKeys } = await c.req.json();
 
   // Prepare bulk insert data
   const addressData = publicKeys.map((pubKey) => ({
@@ -26,6 +32,45 @@ addressesRouter.post('/', authMiddleware, async (c: Context<AuthEnv>) => {
 
   return c.json({ success: true });
 });
+
+// Return a list of all multisigs that the JWT has active.
+// Add a `?showPending=true` query to get invitations too.
+addressesRouter.get(
+  '/connections',
+  authMiddleware,
+  async (c: Context<AuthEnv>) => {
+    const { showPending } = c.req.query();
+    const publicKeys = c.get('publicKeys');
+
+    const whereConditions = [
+      inArray(
+        SchemaMultisigMembers.publicKey,
+        publicKeys.map((pubKey) => pubKey.toBase64()),
+      ),
+    ];
+
+    // Show only accepted by default, show ALL (both accepted and pending) when showPending=true
+    if (showPending !== 'true') {
+      whereConditions.push(eq(SchemaMultisigMembers.isAccepted, true));
+    }
+
+    const members = await db.query.SchemaMultisigMembers.findMany({
+      where: and(...whereConditions),
+    });
+
+    // group per public key from the active JWT.
+    const grouped = members.reduce(
+      (acc, member) => {
+        acc[member.publicKey] = acc[member.publicKey] || [];
+        acc[member.publicKey].push(member);
+        return acc;
+      },
+      {} as Record<string, MultisigMember[]>,
+    );
+
+    return c.json(grouped);
+  },
+);
 
 // Get the public key for an address registered in the system.
 addressesRouter.get('/:address', async (c) => {

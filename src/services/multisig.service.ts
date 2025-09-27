@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   ProposalStatus,
   SchemaMultisigMembers,
@@ -9,6 +9,7 @@ import { db } from '../db';
 import { ValidationError } from '../errors';
 import { Transaction } from '@mysten/sui/transactions';
 import { queryAllOwnedObjects } from '../utils/client';
+import { PublicKey } from '@mysten/sui/cryptography';
 
 // Returns the multisig with its members.
 export const getMultisig = async (address: string) => {
@@ -77,8 +78,9 @@ export const validateQuorum = async (
 };
 
 // Returns true if the multisig is finalized (all members have accepted the invitation).
-export const isMultisigFinalized = async (address: string) => {
-  const isFinalized = await db.query.SchemaMultisigMembers.findMany({
+export const isMultisigFinalized = async (address: string, tx?: any) => {
+  const query = tx ? tx.query : db.query;
+  const isFinalized = await query.SchemaMultisigMembers.findMany({
     where: and(
       eq(SchemaMultisigMembers.multisigAddress, address),
       eq(SchemaMultisigMembers.isAccepted, false),
@@ -108,6 +110,30 @@ export const isMultisigMember = async (
   });
   return !!member;
 };
+
+// A convenient checker to see if ANY of the JWT addresses from the header
+// have acess to the requested multisig.
+export const jwtHasMultisigMemberAccess = async (
+  msigAddress: string,
+  publicKeys: PublicKey[],
+  checkAcceptance: boolean = true,
+) => {
+  const whereConditions = [
+    eq(SchemaMultisigMembers.multisigAddress, msigAddress),
+    inArray(SchemaMultisigMembers.publicKey, publicKeys.map((key) => key.toBase64())),
+  ];
+
+  if (checkAcceptance) {
+    whereConditions.push(eq(SchemaMultisigMembers.isAccepted, true));
+  }
+
+  const member = await db.query.SchemaMultisigMembers.findFirst({
+    where: and(...whereConditions),
+  });
+
+  return !!member;
+};
+
 
 // Get a list of pending proposals for a given multisig address.
 export const getPendingProposals = async (multisigAddress: string) => {

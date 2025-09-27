@@ -25,11 +25,13 @@ multisigRouter.post('/', async (c) => {
     addresses,
     weights,
     threshold,
+    name,
   }: {
     publicKey: string;
     addresses: string[];
     weights: number[];
     threshold: number;
+    name?: string;
   } = await c.req.json();
 
   // Validate the quorum.
@@ -86,6 +88,7 @@ multisigRouter.post('/', async (c) => {
           address: multisig.toSuiAddress(),
           isVerified: false,
           threshold,
+          name,
         })
         .returning()
     )[0];
@@ -149,7 +152,7 @@ multisigRouter.post('/:address/accept', async (c) => {
         ),
       );
 
-    const isFinalized = await isMultisigFinalized(address);
+    const isFinalized = await isMultisigFinalized(address, tx);
     // if all members have accepted, we can finalize the multisig.
     if (isFinalized) {
       await tx
