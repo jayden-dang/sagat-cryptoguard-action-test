@@ -4,6 +4,7 @@ import {
   createTestApp,
 } from './setup/shared-test-setup';
 import { ApiTestFramework } from './framework/api-test-framework';
+import { isValidSuiAddress } from '@mysten/sui/utils';
 
 setupSharedTestEnvironment();
 
@@ -19,19 +20,27 @@ describe('Addresses API', () => {
     test('registers single user addresses', async () => {
       const { session, users } = await framework.createAuthenticatedSession(1);
 
-      expect(users).toHaveLength(1);
-      expect(users[0].address).toBeDefined();
-      expect(users[0].publicKey).toBeDefined();
+      // Verify session contains the correct user
+      const connectedUsers = session.getConnectedUsers();
+      expect(connectedUsers).toHaveLength(1);
+      expect(connectedUsers[0].address).toBe(users[0].address);
+      expect(connectedUsers[0].publicKey).toBe(users[0].publicKey);
     });
 
     test('registers multiple user addresses in same session', async () => {
       const { session, users } = await framework.createAuthenticatedSession(3);
 
-      expect(users).toHaveLength(3);
+      // Verify session contains all connected users
+      const connectedUsers = session.getConnectedUsers();
+      expect(connectedUsers).toHaveLength(3);
+
+      // Verify all users from session match the created users
+      const sessionAddresses = connectedUsers.map((u) => u.address).sort();
+      const createdAddresses = users.map((u) => u.address).sort();
+      expect(sessionAddresses).toEqual(createdAddresses);
 
       // All users should have unique addresses
-      const addresses = users.map((u) => u.address);
-      const uniqueAddresses = new Set(addresses);
+      const uniqueAddresses = new Set(sessionAddresses);
       expect(uniqueAddresses.size).toBe(3);
     });
 
@@ -54,10 +63,12 @@ describe('Addresses API', () => {
       const { session, users } = await framework.createAuthenticatedSession(1);
       const user = users[0];
 
-      // This would require a new method in the framework to actually test the lookup endpoint
-      // For now, just verify the user was properly set up
-      expect(user.address).toMatch(/^0x[a-f0-9]{64}$/);
-      expect(user.publicKey).toBeDefined();
+      // Verify the session knows about this address
+      const connectedUsers = session.getConnectedUsers();
+      const foundUser = connectedUsers.find((u) => u.address === user.address);
+      expect(foundUser).toBeDefined();
+      expect(foundUser?.publicKey).toBe(user.publicKey);
+      expect(isValidSuiAddress(user.address)).toBe(true);
     });
   });
 
@@ -66,7 +77,7 @@ describe('Addresses API', () => {
       const session = framework.createSession();
 
       // Try to register without connecting/authenticating first
-      await expect(session.registerAddresses()).rejects.toThrow();
+      expect(session.registerAddresses()).rejects.toThrow();
     });
   });
 });

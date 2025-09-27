@@ -40,7 +40,10 @@ export class TestSession {
     return user;
   }
 
-  async signMessage(keypair: Ed25519Keypair, message: string): Promise<string> {
+  private async signMessage(
+    keypair: Ed25519Keypair,
+    message: string,
+  ): Promise<string> {
     const bytes = new TextEncoder().encode(message);
     const { signature } = await keypair.signPersonalMessage(bytes);
     return signature;
@@ -78,12 +81,6 @@ export class TestSession {
     // Track connected user if not already tracked
     if (!this.users.find((u) => u.address === user.address)) {
       this.users.push(user);
-    }
-  }
-
-  async connectUsers(users: TestUser[]): Promise<void> {
-    for (const user of users) {
-      await this.connectUser(user);
     }
   }
 
@@ -157,17 +154,13 @@ export class TestSession {
     return multisig;
   }
 
-  async fundsForAddress(address: string): Promise<void> {
-    await fundAddress(address);
-  }
-
   async multiCoinsToAddress(
     keypair: Ed25519Keypair,
     recipient: string,
     count: number,
     totalPerCoin: number = 0.1 * Number(MIST_PER_SUI),
   ): Promise<void> {
-    await this.fundsForAddress(keypair.toSuiAddress());
+    await fundAddress(keypair.toSuiAddress());
 
     const tx = new Transaction();
     tx.setSender(keypair.toSuiAddress());
@@ -355,7 +348,7 @@ export class ApiTestFramework {
       users.push(session.createUser());
     }
 
-    await session.connectUsers(users);
+    for (const user of users) await session.connectUser(user);
     await session.registerAddresses();
 
     return { session, users };

@@ -4,6 +4,7 @@ import {
   createTestApp,
 } from './setup/shared-test-setup';
 import { ApiTestFramework } from './framework/api-test-framework';
+import { isValidSuiAddress } from '@mysten/sui/utils';
 
 setupSharedTestEnvironment();
 
@@ -23,7 +24,7 @@ describe('Multisig API', () => {
 
       expect(multisig.address).toBeDefined();
       expect(multisig.threshold).toBe(2);
-      expect(multisig.address).toMatch(/^0x[a-f0-9]{64}$/);
+      expect(isValidSuiAddress(multisig.address)).toBe(true);
     });
 
     test('creates 2-of-3 multisig', async () => {

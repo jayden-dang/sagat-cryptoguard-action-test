@@ -42,4 +42,3 @@ export async function fundAddress(address: string): Promise<boolean> {
     return false;
   }
 }
-
