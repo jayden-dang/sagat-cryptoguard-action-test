@@ -1,4 +1,5 @@
-import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import { CustomWalletButton } from "./CustomWalletButton";
 import { Link, useLocation } from "react-router-dom";
 import { LucideLock, Plus, Mail } from "lucide-react";
 import { Button } from "./ui/button";
@@ -61,7 +62,7 @@ export function Header() {
           )}
 
           {/* Wallet connect button */}
-          <ConnectButton />
+          <CustomWalletButton />
         </div>
       </div>
     </div>

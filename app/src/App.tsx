@@ -1,14 +1,24 @@
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import { Header } from "./components/header";
 import { AppRouter } from "./components/AppRouter";
+
+function AppContent() {
+  const location = useLocation();
+  const hideHeaderOnPaths = ['/create'];
+  const shouldHideHeader = hideHeaderOnPaths.includes(location.pathname);
+
+  return (
+    <>
+      {!shouldHideHeader && <Header />}
+      <AppRouter />
+    </>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Header />
-      <div className="container mx-auto p-4">
-        <AppRouter />
-      </div>
+      <AppContent />
     </BrowserRouter>
   );
 }

@@ -6,6 +6,7 @@ import { SmartDashboard } from "./SmartDashboard";
 import { CreateMultisigPage } from "./CreateMultisigPage";
 import { InvitationsPage } from "./InvitationsPage";
 import { Loading } from "./ui/loading";
+import { CustomWalletButton } from "./CustomWalletButton";
 
 export function AppRouter() {
   // Wallet state from dApp Kit
@@ -22,6 +23,7 @@ export function AppRouter() {
         <p className="text-gray-600 mb-8">
           Connect your wallet to manage multisig accounts
         </p>
+        <CustomWalletButton variant="sidebar" />
       </div>
     );
   }
