@@ -89,11 +89,11 @@ export function Header() {
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px]">
+              <SheetContent side="right" className="w-[300px] sm:w-[350px]">
                 <SheetHeader>
                   <SheetTitle>Navigation</SheetTitle>
                 </SheetHeader>
-                <div className="mt-6 flex flex-col gap-3">
+                <div className="mt-8 flex flex-col gap-4 px-2">
                   <NavigationLinks mobile onNavigate={() => setSheetOpen(false)} />
                 </div>
               </SheetContent>

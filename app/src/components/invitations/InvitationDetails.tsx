@@ -36,10 +36,6 @@ export function InvitationDetails({
         <div className="space-y-2">
           <MembersList members={details.members} />
 
-          <div className="text-xs text-gray-500 mt-2">
-            Full address: <span className="font-mono">{multisig.address}</span>
-          </div>
-
           {/* Actions inside expanded section */}
           <div className="flex items-center justify-end space-x-2 mt-4 pt-4 border-t">
             <Button

@@ -1,14 +1,27 @@
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useApiAuth } from '../contexts/ApiAuthContext';
 import { Button } from './ui/button';
+import { CopyButton } from './ui/CopyButton';
 import { Shield, ArrowRight } from 'lucide-react';
+import { extractPublicKey } from '../lib/wallet';
+import { formatAddress } from '../lib/formatters';
 
 export function AuthPrompt() {
   const currentAccount = useCurrentAccount();
   const { signAndConnect, isConnecting } = useApiAuth();
 
-  const formatAddress = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
+  let publicKeyBase64 = '';
+  if (currentAccount) {
+    try {
+      const pubKey = extractPublicKey(
+        new Uint8Array(currentAccount.publicKey),
+        currentAccount.address
+      );
+      publicKeyBase64 = pubKey.toBase64();
+    } catch (error) {
+      console.error('Failed to extract public key:', error);
+    }
+  }
 
   return (
     <div className="mx-auto mt-20 p-8">
@@ -25,11 +38,30 @@ export function AuthPrompt() {
           Sign a message to securely connect your wallet to Sagat
         </p>
 
-        <div className="bg-gray-50 rounded-lg p-4 mb-8">
-          <p className="text-sm text-gray-500 mb-1">Connected Wallet</p>
-          <p className="font-mono font-medium">
-            {currentAccount ? formatAddress(currentAccount.address) : ''}
-          </p>
+        <div className="bg-gray-50 rounded-lg p-6 mb-8 space-y-3 max-w-lg mx-auto">
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Address</p>
+            <div className="flex items-center justify-center gap-1">
+              <p className="font-mono text-sm font-medium">
+                {currentAccount ? formatAddress(currentAccount.address) : ''}
+              </p>
+              {currentAccount && (
+                <CopyButton value={currentAccount.address} size="xs" />
+              )}
+            </div>
+          </div>
+
+          {publicKeyBase64 && (
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Public Key</p>
+              <div className="flex items-center justify-center gap-1">
+                <p className="font-mono text-sm font-medium break-all max-w-md">
+                  {publicKeyBase64}
+                </p>
+                <CopyButton value={publicKeyBase64} size="xs" />
+              </div>
+            </div>
+          )}
         </div>
 
         <Button

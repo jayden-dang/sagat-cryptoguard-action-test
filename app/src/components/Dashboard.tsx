@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Plus, Users, FileText, ExternalLink } from 'lucide-react';
 import { useAcceptInvitation } from '../hooks/useAcceptInvitation';
+import { formatAddress } from '../lib/formatters';
 
 interface SimplifiedMultisig {
   address: string;
@@ -20,9 +21,6 @@ interface DashboardProps {
 export function Dashboard({ multisigs }: DashboardProps) {
   const [acceptingMultisig, setAcceptingMultisig] = useState<string | null>(null);
   const acceptInvitation = useAcceptInvitation();
-
-  const formatAddress = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return (
     <div className="max-w-6xl mx-auto mt-8 px-4">

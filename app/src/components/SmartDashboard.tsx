@@ -49,21 +49,6 @@ export function SmartDashboard() {
             </Link>
           </div>
         </div>
-
-        {/* Show preview of pending invitations if any */}
-        {pendingInvites.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">Your Pending Invitations</h2>
-            <Dashboard multisigs={pendingInvites.slice(0, 3)} />
-            {pendingInvites.length > 3 && (
-              <div className="text-center mt-4">
-                <Link to="/invitations">
-                  <Button variant="ghost">View All {pendingInvites.length} Invitations →</Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     );
   }

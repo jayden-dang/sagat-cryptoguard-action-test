@@ -3,6 +3,8 @@ import { useCurrentAccount, useConnectWallet, useDisconnectWallet, useWallets, u
 import { useApiAuth } from "../contexts/ApiAuthContext";
 import { Button } from "./ui/button";
 import { Wallet, ChevronDown, LogOut, Copy, Check, Shield, ArrowRight } from "lucide-react";
+import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
+import { formatAddress } from "../lib/formatters";
 
 type WalletVariant = "header" | "sidebar";
 
@@ -98,8 +100,8 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
   const wallets = useWallets();
   const { isCurrentAddressAuthenticated, signAndConnect, isConnecting, disconnect: apiDisconnect, authenticatedAddresses } = useApiAuth();
   const [showWallets, setShowWallets] = useState(false);
-  const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { copied, copy: copyAddress } = useCopyToClipboard();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -115,14 +117,9 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
     };
   }, []);
 
-  const formatAddress = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
-
-  const handleCopyAddress = async () => {
+  const handleCopyAddress = () => {
     if (currentAccount?.address) {
-      await navigator.clipboard.writeText(currentAccount.address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      copyAddress(currentAccount.address);
     }
   };
 

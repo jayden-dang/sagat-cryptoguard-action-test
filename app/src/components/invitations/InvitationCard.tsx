@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Users, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
+import { CopyButton } from "../ui/CopyButton";
 import { useAcceptInvitation } from "../../hooks/useAcceptInvitation";
 import { apiClient } from "../../lib/api";
 import { InvitationDetails } from "./InvitationDetails";
 import { SimplifiedMultisig } from "../../types/multisig";
+import { formatAddress } from "../../lib/formatters";
 
 interface InvitationCardProps {
   multisig: SimplifiedMultisig;
@@ -15,9 +17,6 @@ export function InvitationCard({ multisig }: InvitationCardProps) {
   const [multisigDetails, setMultisigDetails] = useState<any>(null);
   const [processingInvite, setProcessingInvite] = useState(false);
   const acceptInvitation = useAcceptInvitation();
-
-  const formatAddress = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   const toggleExpanded = async () => {
     if (isExpanded) {
@@ -62,9 +61,12 @@ export function InvitationCard({ multisig }: InvitationCardProps) {
             <h3 className="font-medium text-gray-900">
               {multisig.name || 'Unnamed Multisig'}
             </h3>
-            <p className="text-sm text-gray-500">
-              {formatAddress(multisig.address)}
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-sm text-gray-500">
+                {formatAddress(multisig.address)}
+              </p>
+              <CopyButton value={multisig.address} size="xs" />
+            </div>
             <p className="text-xs text-gray-400">
               {multisigDetails ?
                 `${multisigDetails.members.filter((m: any) => m.isAccepted).length} out of ${multisigDetails.members.length} members accepted` :

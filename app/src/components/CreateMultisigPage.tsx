@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, HelpCircle, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MemberInput } from "./multisig/MemberInput";
 import { CustomWalletButton } from "./CustomWalletButton";
 import { MultisigPageFAQ } from "./faqs/MultisigPageFAQ";
@@ -32,6 +32,8 @@ import {
 export function CreateMultisigPage() {
   const currentAccount = useCurrentAccount();
   const createMultisig = useCreateMultisig();
+
+  const navigate = useNavigate();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -280,6 +282,7 @@ export function CreateMultisigPage() {
                   variant="outline"
                   className="flex-1"
                   disabled={createMultisig.isPending}
+                  onClick={() => navigate('/')}
                 >
                   Cancel
                 </Button>
