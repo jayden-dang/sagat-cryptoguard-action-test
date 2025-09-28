@@ -5,9 +5,20 @@ import { ValidationError } from './errors';
 import proposalsRouter from './routes/proposals';
 import authRouter from './routes/auth';
 import { SUI_ENV } from './db/env';
+import { cors } from 'hono/cors';
 
 const app = new Hono();
 
+app.use(
+  '*',
+  cors({
+    origin: 'http://localhost:5173', // Vite's default dev server port
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 600,
+    credentials: true,
+  })
+)
 // Health check.
 app.get('/', (c) => {
   return c.text(`Sagat API is up and running on network "${SUI_ENV}"`);

@@ -8,6 +8,9 @@ import { db } from '../db';
 import { and, eq, inArray } from 'drizzle-orm';
 import { authMiddleware, AuthEnv } from '../services/auth.service';
 import { Context } from 'hono';
+import { ValidationError } from '../errors';
+import { parsePublicKey } from '../utils/pubKey';
+import { registerPublicKeys } from '../services/addresses.service';
 
 const addressesRouter = new Hono();
 
@@ -16,19 +19,24 @@ const addressesRouter = new Hono();
  * No signature required - uses JWT authentication.
  */
 addressesRouter.post('/', authMiddleware, async (c: Context<AuthEnv>) => {
-  // Get all public keys from the JWT
   const publicKeys = c.get('publicKeys');
+  const { extraPublicKeys } = await c.req.json();
 
-  // const { extraPublicKeys } = await c.req.json();
+  // Parse extra public keys using the existing utility
+  const parsedExtraKeys = extraPublicKeys.map((keyStr: string) => {
+    try {
+      return parsePublicKey(keyStr);
+    } catch (error) {
+      console.warn('Failed to parse public key:', keyStr, error);
+      return null;
+    }
+  }).filter(Boolean);
 
-  // Prepare bulk insert data
-  const addressData = publicKeys.map((pubKey) => ({
-    publicKey: pubKey.toBase64(),
-    address: pubKey.toSuiAddress(),
-  }));
+  // Combine all public keys
+  const allPublicKeys = [...publicKeys, ...parsedExtraKeys];
 
-  // Bulk insert all addresses
-  await db.insert(SchemaAddresses).values(addressData).onConflictDoNothing();
+  // Register all public keys using the service
+  await registerPublicKeys(allPublicKeys);
 
   return c.json({ success: true });
 });
@@ -79,6 +87,9 @@ addressesRouter.get('/:address', async (c) => {
   const addr = await db.query.SchemaAddresses.findFirst({
     where: eq(SchemaAddresses.address, address),
   });
+
+  if (!addr)
+    throw new ValidationError('Address is not registered in the system.');
 
   return c.json(addr);
 });

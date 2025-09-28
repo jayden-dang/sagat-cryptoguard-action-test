@@ -1,12 +1,15 @@
-import { ConnectButton } from "@mysten/dapp-kit";
-import { WalletStatus } from "./WalletStatus";
+import { BrowserRouter } from "react-router-dom";
+import { Header } from "./components/header";
+import { AppRouter } from "./components/AppRouter";
 
 function App() {
   return (
-    <>
-      <ConnectButton />
-      <WalletStatus />
-    </>
+    <BrowserRouter>
+      <Header />
+      <div className="container mx-auto p-4">
+        <AppRouter />
+      </div>
+    </BrowserRouter>
   );
 }
 

@@ -11,6 +11,7 @@ import { validatePersonalMessage } from './addresses.service';
 import { PublicKey } from '@mysten/sui/cryptography';
 import { parsePublicKey } from '../utils/pubKey';
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
+import { registerPublicKeys } from './addresses.service';
 
 const JWT_COOKIE_NAME = 'connected-wallet';
 
@@ -111,12 +112,20 @@ export const connectToPublicKey = async (c: Context) => {
 
     // Set the cookie for the connected wallet address with the right expiration.
     setCookie(c, JWT_COOKIE_NAME, await issueJwt(pubKeys), {
-      sameSite: 'Strict',
+      sameSite: 'None', // Required for cross-origin cookies
       secure: true,
       httpOnly: true,
       path: '/',
       maxAge: 60 * 60 * 24 * 365, // 365 days
     });
+
+    // Automatically register all addresses for the connected public keys
+    try {
+      await registerPublicKeys(pubKeys);
+    } catch (error) {
+      console.error('Failed to register addresses:', error);
+      // Don't fail the connection if address registration fails
+    }
 
     return c.json({ success: true });
   } catch (error) {
@@ -164,7 +173,7 @@ export const disconnect = async (c: Context) => {
     path: '/',
     secure: true,
     httpOnly: true,
-    sameSite: 'Strict',
+    sameSite: 'None', // Match the cookie setting
   });
   return c.json({ success: true });
 };

@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App.tsx";
 import { networkConfig } from "./networkConfig.ts";
 import { Toaster } from "sonner";
+import { ApiAuthProvider } from "./contexts/ApiAuthContext.tsx";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +18,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
         <WalletProvider autoConnect>
-          <App />
+          <ApiAuthProvider>
+            <App />
+          </ApiAuthProvider>
         </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>

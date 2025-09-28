@@ -1,11 +1,10 @@
 import { Hono } from 'hono';
 import {
-  SchemaAddresses,
   SchemaMultisigMembers,
   SchemaMultisigs,
 } from '../db/schema';
 import { parsePublicKey } from '../utils/pubKey';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { MultiSigPublicKey } from '@mysten/sui/multisig';
 import {
@@ -13,7 +12,7 @@ import {
   isMultisigMember,
   validateQuorum,
 } from '../services/multisig.service';
-import { validatePersonalMessage } from '../services/addresses.service';
+import { validatePersonalMessage, registerPublicKeyStrings } from '../services/addresses.service';
 import { PublicKey } from '@mysten/sui/cryptography';
 import { ValidationError } from '../errors';
 
@@ -22,53 +21,43 @@ const multisigRouter = new Hono();
 multisigRouter.post('/', async (c) => {
   const {
     publicKey,
-    addresses,
+    publicKeys,
     weights,
     threshold,
     name,
   }: {
     publicKey: string;
-    addresses: string[];
+    publicKeys: string[];
     weights: number[];
     threshold: number;
     name?: string;
   } = await c.req.json();
 
-  // Validate the quorum.
-  await validateQuorum(addresses, weights, threshold);
+  const creatorPubKey = parsePublicKey(publicKey);
 
-  const creatorPubKey = await parsePublicKey(publicKey);
+  // Register all public keys first
+  await registerPublicKeyStrings(publicKeys);
+
+  // Parse all public keys and get their addresses
+  const parsedPubKeys: PublicKey[] = [];
+  const addresses: string[] = [];
+
+  for (const pubKeyStr of publicKeys) {
+    const parsedKey = parsePublicKey(pubKeyStr);
+    const address = parsedKey.toSuiAddress();
+
+    parsedPubKeys.push(parsedKey);
+    addresses.push(address);
+  }
+
+  // Validate the quorum with computed addresses
+  await validateQuorum(addresses, weights, threshold);
 
   if (!addresses.some((address) => address === creatorPubKey.toSuiAddress())) {
     return c.json(
-      { error: 'Creator address is not in the list of addresses' },
+      { error: 'Creator address is not in the list of public keys' },
       400,
     );
-  }
-
-  // find the public keys in our addresses
-  const dbPubKeys = await db.query.SchemaAddresses.findMany({
-    where: inArray(SchemaAddresses.address, addresses),
-  });
-
-  if (dbPubKeys.length !== addresses.length) {
-    return c.json(
-      { error: 'Some addresses are not registered in the system' },
-      400,
-    );
-  }
-
-  const parsedPubKeys: PublicKey[] = [];
-
-  for (const address of addresses) {
-    const key = dbPubKeys.find((key) => key.address === address);
-    if (!key) {
-      return c.json(
-        { error: 'Some addresses are not registered in the system' },
-        400,
-      );
-    }
-    parsedPubKeys.push(await parsePublicKey(key.publicKey));
   }
 
   const multisig = MultiSigPublicKey.fromPublicKeys({
