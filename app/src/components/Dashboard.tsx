@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Plus, Users, FileText, ExternalLink } from 'lucide-react';
-import { useAcceptInvitation } from '../hooks/useAcceptInvitation';
-import { formatAddress } from '../lib/formatters';
+import { Plus, FileText, Users } from 'lucide-react';
+import { MultisigSelector } from './MultisigSelector';
+import { ProposalSheet } from './ProposalSheet';
+import { MultisigDetails } from './MultisigDetails';
 
 interface SimplifiedMultisig {
   address: string;
@@ -19,125 +20,139 @@ interface DashboardProps {
 }
 
 export function Dashboard({ multisigs }: DashboardProps) {
-  const [acceptingMultisig, setAcceptingMultisig] = useState<string | null>(null);
-  const acceptInvitation = useAcceptInvitation();
+  // Filter for verified multisigs only
+  const verifiedMultisigs = useMemo(
+    () => multisigs.filter(m => m.isVerified && m.isAccepted),
+    [multisigs]
+  );
 
-  return (
-    <div className="max-w-6xl mx-auto mt-8 px-4">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Your Multisigs</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your multi-signature wallets
-          </p>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create New Multisig
-        </Button>
-      </div>
+  const [selectedMultisig, setSelectedMultisig] = useState<string>(
+    verifiedMultisigs[0]?.address || ''
+  );
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'ready' | 'executed'>('all');
+  const [showProposalSheet, setShowProposalSheet] = useState(false);
 
-      {/* Multisig Cards Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {multisigs.map((multisig) => (
-          <div
-            key={multisig.address}
-            className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => setSelectedMultisig(multisig.address)}
-          >
-            {/* Card Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Users className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="font-semibold">
-                    {multisig.name || 'Unnamed Multisig'}
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    {formatAddress(multisig.address)}
-                  </p>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-400" />
-            </div>
+  // Update selected multisig when the list changes (e.g., wallet switch)
+  useEffect(() => {
+    if (verifiedMultisigs.length > 0) {
+      // If current selection is not in the new list, reset to first available
+      const currentExists = verifiedMultisigs.some(m => m.address === selectedMultisig);
+      if (!currentExists) {
+        setSelectedMultisig(verifiedMultisigs[0].address);
+      }
+    } else {
+      // No multisigs available, clear selection
+      setSelectedMultisig('');
+    }
+  }, [verifiedMultisigs, selectedMultisig]);
 
-            {/* Stats */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Threshold</span>
-                <span className="text-sm font-medium">
-                  {multisig.threshold}/{multisig.totalMembers || 'N/A'}
-                </span>
-              </div>
+  const currentMultisig = verifiedMultisigs.find(m => m.address === selectedMultisig);
 
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Status</span>
-                <span className={`text-sm font-medium ${
-                  multisig.isAccepted ? 'text-green-600' : 'text-orange-600'
-                }`}>
-                  {multisig.isAccepted ? 'Active' : 'Pending Invitation'}
-                </span>
-              </div>
-
-              {multisig.pendingProposals > 0 && (
-                <div className="flex justify-between items-center pt-3 border-t">
-                  <span className="text-sm text-gray-600 flex items-center">
-                    <FileText className="w-4 h-4 mr-1" />
-                    Pending Proposals
-                  </span>
-                  <span className="text-sm font-medium text-orange-600">
-                    {multisig.pendingProposals}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Action Button */}
-            <Button
-              className="w-full mt-4"
-              variant={multisig.isAccepted ? "outline" : "default"}
-              disabled={acceptingMultisig === multisig.address}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!multisig.isAccepted) {
-                  setAcceptingMultisig(multisig.address);
-                  acceptInvitation.mutate(multisig.address, {
-                    onSettled: () => setAcceptingMultisig(null)
-                  });
-                } else {
-                  // TODO: Navigate to multisig details view
-                  console.log('View details for:', multisig.address);
-                }
-              }}
-            >
-              {acceptingMultisig === multisig.address ?
-                'Accepting...' :
-                (multisig.isAccepted ? 'View Details' : 'Accept Invitation')
-              }
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      {/* Empty State (shouldn't show but just in case) */}
-      {multisigs.length === 0 && (
+  // No verified multisigs - show empty state
+  if (verifiedMultisigs.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto mt-8 px-4">
         <div className="text-center py-12">
           <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No multisigs yet
+            No Active Multisigs Yet
           </h3>
           <p className="text-gray-500 mb-4">
-            Create your first multisig wallet to get started
+            You don't have any verified multisigs. Accept pending invitations to get started.
           </p>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Multisig
+          <Button onClick={() => window.location.href = '/invitations'}>
+            View Invitations
           </Button>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: 'all' as const, label: 'All Proposals', count: 0 },
+    { id: 'pending' as const, label: 'Pending', count: 0, color: 'text-orange-600' },
+    { id: 'ready' as const, label: 'Ready to Execute', count: 0, color: 'text-green-600' },
+    { id: 'executed' as const, label: 'Executed', count: 0 },
+  ];
+
+  return (
+    <div className="container mx-auto mt-8 px-4">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-4">Multisig Dashboard</h1>
+
+        {/* Multisig Selector Bar */}
+        <div className="bg-white border rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            {/* Multisig Selector */}
+            <MultisigSelector
+              multisigs={verifiedMultisigs}
+              selectedMultisig={selectedMultisig}
+              onSelectMultisig={setSelectedMultisig}
+            />
+
+            {/* Action Buttons */}
+            <div className="ml-4 flex items-center space-x-3 relative">
+              {currentMultisig && <MultisigDetails multisig={currentMultisig} />}
+              <Button onClick={() => setShowProposalSheet(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Proposal
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-1 border-b">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                activeTab === tab.id
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                  tab.color || 'bg-gray-100 text-gray-600'
+                } ${tab.color?.includes('orange') ? 'bg-orange-100' : ''} ${
+                  tab.color?.includes('green') ? 'bg-green-100' : ''
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Proposals Content Area */}
+      <div className="space-y-4">
+        {/* Empty State for now */}
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No Proposals Yet
+          </h3>
+          <p className="text-gray-500 mb-4">
+            Create your first proposal to get started with this multisig.
+          </p>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Proposal
+          </Button>
+        </div>
+      </div>
+
+      {/* Proposal Creation Sheet */}
+      <ProposalSheet
+        open={showProposalSheet}
+        onOpenChange={setShowProposalSheet}
+        multisigAddress={selectedMultisig}
+      />
     </div>
   );
 }

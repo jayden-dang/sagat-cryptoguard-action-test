@@ -12,8 +12,8 @@ export function SmartDashboard() {
     return <Loading message="Loading your multisigs..." />;
   }
 
-  const activeMultisigs = multisigs?.filter(m => m.isAccepted) ?? [];
-  const pendingInvites = multisigs?.filter(m => !m.isAccepted) ?? [];
+  const activeMultisigs = multisigs?.filter((m) => m.isAccepted) ?? [];
+  const pendingInvites = multisigs?.filter((m) => !m.isAccepted) ?? [];
 
   // Case 1: User has no active multisigs (may or may not have pending invites)
   if (activeMultisigs.length === 0) {
@@ -43,8 +43,7 @@ export function SmartDashboard() {
                 <Mail className="mr-2 h-4 w-4" />
                 {pendingInvites.length > 0
                   ? `View Invitations (${pendingInvites.length})`
-                  : 'Check Invitations'
-                }
+                  : "Check Invitations"}
               </Button>
             </Link>
           </div>
@@ -54,18 +53,5 @@ export function SmartDashboard() {
   }
 
   // Case 2: User has active multisigs
-  return (
-    <div className="max-w-6xl mx-auto mt-8 px-4">
-      {/* Main Dashboard Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Your Multisigs</h1>
-        <p className="text-gray-600 mt-1">
-          Manage your multi-signature wallets
-        </p>
-      </div>
-
-      {/* Active Multisigs */}
-      <Dashboard multisigs={activeMultisigs} />
-    </div>
-  );
+  return <Dashboard multisigs={activeMultisigs} />;
 }

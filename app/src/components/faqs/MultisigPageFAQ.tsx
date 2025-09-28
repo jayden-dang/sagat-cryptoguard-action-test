@@ -13,7 +13,7 @@ const faqData: FAQItem[] = [
     id: "what-is-multisig",
     icon: Users,
     question: "What is a multisig wallet?",
-    answer: "A multisig (multi-signature) wallet requires multiple signatures to authorize transactions. This provides enhanced security by requiring approval from multiple parties before funds can be moved."
+    answer: "Sui has native multisig support, and Sagat enables you to create multisigs, create/aggregate signatures for proposals and be part of multiple schemes."
   },
   {
     id: "how-threshold-works",

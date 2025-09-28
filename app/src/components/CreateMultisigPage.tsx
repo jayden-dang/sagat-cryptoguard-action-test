@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, HelpCircle, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -139,17 +139,11 @@ export function CreateMultisigPage() {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back to Dashboard
             </Link>
-            <div className="mb-6">
+            <div className="mb-6 mt-6">
               <h1 className="text-3xl font-bold text-slate-900 mb-4">
                 Create New Multisig
               </h1>
-              <div className="flex items-center gap-2 mb-3">
-                <HelpCircle className="w-6 h-6 text-slate-600" />
-                <h2 className="text-xl font-semibold text-slate-900">
-                  How Multisig Works
-                </h2>
-              </div>
-              <p className="text-slate-600">
+              <p className="text-slate-600 mt-12">
                 Learn about multisig wallets and how to set them up securely.
               </p>
             </div>
