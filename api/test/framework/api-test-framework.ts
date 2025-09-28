@@ -132,7 +132,7 @@ export class TestSession {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         publicKey: creator.publicKey,
-        addresses: members.map((m) => m.address),
+        publicKeys: members.map((m) => m.publicKey),
         weights,
         threshold,
         name,

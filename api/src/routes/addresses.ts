@@ -20,7 +20,7 @@ const addressesRouter = new Hono();
  */
 addressesRouter.post('/', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
-  const { extraPublicKeys } = await c.req.json();
+  const { extraPublicKeys } = await c.req.json().catch(() => ({ extraPublicKeys: [] }));
 
   // Parse extra public keys using the existing utility
   const parsedExtraKeys = extraPublicKeys.map((keyStr: string) => {

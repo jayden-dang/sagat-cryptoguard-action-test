@@ -108,7 +108,7 @@ describe('Multisig API', () => {
       );
     });
 
-    test('all members must be registered', async () => {
+    test('public keys are auto-registered during multisig creation', async () => {
       const session = framework.createSession();
       const alice = session.createUser();
       const bob = session.createUser();
@@ -116,9 +116,11 @@ describe('Multisig API', () => {
       // Connect alice but don't register addresses
       await session.connectUser(alice);
 
-      await expect(
-        session.createMultisig(alice, [alice, bob], 2),
-      ).rejects.toThrow('not registered');
+      // This should now succeed because the API auto-registers public keys
+      const multisig = await session.createMultisig(alice, [alice, bob], 2);
+
+      expect(multisig.address).toBeDefined();
+      expect(multisig.threshold).toBe(2);
     });
   });
 });
