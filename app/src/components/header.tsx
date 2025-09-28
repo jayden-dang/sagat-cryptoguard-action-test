@@ -1,68 +1,104 @@
+import { useState } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { CustomWalletButton } from "./CustomWalletButton";
 import { Link, useLocation } from "react-router-dom";
-import { LucideLock, Plus, Mail } from "lucide-react";
+import { Plus, Mail, Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import { useApiAuth } from "../contexts/ApiAuthContext";
 import { useUserMultisigs } from "../hooks/useUserMultisigs";
+import { Logo } from "./Logo";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 export function Header() {
   const location = useLocation();
   const currentAccount = useCurrentAccount();
   const { isCurrentAddressAuthenticated } = useApiAuth();
   const { data: multisigs } = useUserMultisigs(true); // Include pending
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Count pending invitations
   const pendingCount = multisigs?.filter(m => !m.isAccepted).length ?? 0;
 
+  const NavigationLinks = ({ mobile = false, onNavigate = () => {} }) => (
+    <>
+      {currentAccount && isCurrentAddressAuthenticated && (
+        <>
+          {/* Invitations button */}
+          <Link to="/invitations" onClick={onNavigate}>
+            <Button
+              variant={location.pathname === "/invitations" ? "default" : "outline"}
+              size={mobile ? "default" : "sm"}
+              className={`relative ${mobile ? "w-full justify-start" : ""}`}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Invitations
+              {pendingCount > 0 && (
+                <span className={`absolute ${mobile ? "top-2 right-2" : "-top-1 -right-1"} bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center`}>
+                  {pendingCount}
+                </span>
+              )}
+            </Button>
+          </Link>
+
+          {/* Create multisig button */}
+          <Link to="/create" onClick={onNavigate}>
+            <Button
+              variant={location.pathname === "/create" ? "default" : "outline"}
+              size={mobile ? "default" : "sm"}
+              className={mobile ? "w-full justify-start" : ""}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Multisig
+            </Button>
+          </Link>
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="border-b">
       <div className="p-4 max-w-[1600px] mx-auto flex justify-between items-center">
-        {/* Logo */}
-        <Link to="/">
-          <h1 className="text-xl flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <LucideLock />
-            SAGAT
-          </h1>
-        </Link>
+        {/* Logo - hide subtitle on mobile */}
+        <div className="block md:hidden">
+          <Logo showSubtitle={false} size="sm" />
+        </div>
+        <div className="hidden md:block">
+          <Logo />
+        </div>
 
-        {/* Right side navigation */}
-        <div className="flex items-center gap-4">
-          {/* Show nav buttons only when authenticated */}
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-4">
+          <NavigationLinks />
+          <CustomWalletButton />
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className="flex md:hidden items-center gap-2">
+          <CustomWalletButton variant="header" />
+
           {currentAccount && isCurrentAddressAuthenticated && (
-            <>
-              {/* Invitations button - always visible */}
-              <Link to="/invitations">
-                <Button
-                  variant={location.pathname === "/invitations" ? "default" : "outline"}
-                  size="sm"
-                  className="relative"
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Invitations
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="relative">
+                  <Menu className="w-4 h-4" />
                   {pendingCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                       {pendingCount}
                     </span>
                   )}
                 </Button>
-              </Link>
-
-              {/* Create multisig button */}
-              <Link to="/create">
-                <Button
-                  variant={location.pathname === "/create" ? "default" : "outline"}
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Multisig
-                </Button>
-              </Link>
-            </>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px]">
+                <SheetHeader>
+                  <SheetTitle>Navigation</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 flex flex-col gap-3">
+                  <NavigationLinks mobile onNavigate={() => setSheetOpen(false)} />
+                </div>
+              </SheetContent>
+            </Sheet>
           )}
-
-          {/* Wallet connect button */}
-          <CustomWalletButton />
         </div>
       </div>
     </div>

@@ -11,6 +11,84 @@ interface CustomWalletButtonProps {
   disableAccountSwitching?: boolean;
 }
 
+// Helper component for account list items
+interface AccountItemProps {
+  account: any;
+  currentAccount: any;
+  authenticatedAddresses: string[];
+  onSwitchAccount: (account: any) => void;
+  onSignAndConnect: () => void;
+  isConnecting: boolean;
+  formatAddress: (address: string) => string;
+}
+
+function AccountItem({
+  account,
+  currentAccount,
+  authenticatedAddresses,
+  onSwitchAccount,
+  onSignAndConnect,
+  isConnecting,
+  formatAddress
+}: AccountItemProps) {
+  const isCurrent = account.address === currentAccount.address;
+  const isAccountAuthenticated = authenticatedAddresses.includes(account.address);
+
+  const handleSignClick = () => {
+    // If not current account, switch to it first
+    if (!isCurrent) {
+      onSwitchAccount(account);
+      // Give a small delay for the account switch to complete
+      setTimeout(() => {
+        onSignAndConnect();
+      }, 100);
+    } else {
+      // Already on this account, just sign
+      onSignAndConnect();
+    }
+  };
+
+  return (
+    <div className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 w-full ${
+      isCurrent ? 'bg-blue-50 text-blue-700' : ''
+    }`}>
+      <button
+        onClick={() => onSwitchAccount(account)}
+        className="flex-1 text-left min-w-0"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-xs truncate">
+            {formatAddress(account.address)}
+          </p>
+          {account.label && (
+            <p className="text-xs text-gray-500 mt-1 truncate">
+              {account.label}
+            </p>
+          )}
+        </div>
+      </button>
+
+      <div className="flex items-center ml-2 space-x-1">
+        {isCurrent && (
+          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+        )}
+        {!isAccountAuthenticated && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSignClick}
+            disabled={isConnecting}
+            className="text-xs px-1.5 py-1 h-6 flex items-center gap-1"
+          >
+            <Shield className="w-2.5 h-2.5" />
+            {isConnecting && isCurrent ? "Signing..." : "Sign"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CustomWalletButton({ variant = "header", disableAccountSwitching = false }: CustomWalletButtonProps) {
   const currentAccount = useCurrentAccount();
   const accounts = useAccounts();
@@ -18,7 +96,7 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
   const { mutate: disconnect } = useDisconnectWallet();
   const { mutate: switchAccount } = useSwitchAccount();
   const wallets = useWallets();
-  const { isCurrentAddressAuthenticated, signAndConnect, isConnecting, disconnect: apiDisconnect } = useApiAuth();
+  const { isCurrentAddressAuthenticated, signAndConnect, isConnecting, disconnect: apiDisconnect, authenticatedAddresses } = useApiAuth();
   const [showWallets, setShowWallets] = useState(false);
   const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -48,6 +126,13 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
     }
   };
 
+  const handleSwitchAccount = (account: any) => {
+    if (account.address !== currentAccount?.address) {
+      switchAccount({ account });
+    }
+    setShowWallets(false);
+  };
+
   const handleWalletConnect = (walletName: string) => {
     connect(
       { wallet: wallets.find((w) => w.name === walletName)! },
@@ -60,20 +145,39 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
 
   const handleFullDisconnect = async () => {
     try {
-      // First disconnect from our API (clears JWT and auth state)
       await apiDisconnect();
-
-      // Then disconnect the wallet
       disconnect();
-
       setShowWallets(false);
     } catch (error) {
       console.error("Full disconnect failed:", error);
-      // Still try to disconnect wallet even if API disconnect fails
       disconnect();
       setShowWallets(false);
     }
   };
+
+  // Helper component for account switching section
+  const AccountSwitchingSection = ({ showTitle = true }: { showTitle?: boolean }) => (
+    <>
+      {showTitle && (
+        <div className="px-3 py-2 border-b">
+          <p className="text-sm font-medium">Switch Account</p>
+        </div>
+      )}
+      {accounts.map((account) => (
+        <AccountItem
+          key={account.address}
+          account={account}
+          currentAccount={currentAccount}
+          authenticatedAddresses={authenticatedAddresses || []}
+          onSwitchAccount={handleSwitchAccount}
+          onSignAndConnect={signAndConnect}
+          isConnecting={isConnecting}
+          formatAddress={formatAddress}
+        />
+      ))}
+      {showTitle && <div className="border-t my-1"></div>}
+    </>
+  );
 
   // No wallet connected
   if (!currentAccount) {
@@ -189,6 +293,28 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
                 </>
               )}
             </Button>
+
+            {!disableAccountSwitching && accounts.length > 1 && (
+              <div className="mb-3">
+                <p className="text-xs text-slate-500 mb-2">Switch Account</p>
+                <div className="max-h-24 overflow-y-auto space-y-1">
+                  {accounts.filter(acc => acc.address !== currentAccount.address).map((account) => (
+                    <div key={account.address} className="text-xs bg-slate-50 hover:bg-slate-100 rounded border">
+                      <AccountItem
+                        account={account}
+                        currentAccount={currentAccount}
+                        authenticatedAddresses={authenticatedAddresses || []}
+                        onSwitchAccount={(acc) => switchAccount({ account: acc })}
+                        onSignAndConnect={signAndConnect}
+                        isConnecting={isConnecting}
+                        formatAddress={formatAddress}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Button
               onClick={handleFullDisconnect}
               variant="ghost"
@@ -222,6 +348,11 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
             <div className="px-3 py-2 border-b text-center">
               <p className="text-sm font-medium text-blue-700">Authentication Required</p>
             </div>
+
+            {accounts.length > 1 && (
+              <AccountSwitchingSection />
+            )}
+
             <div className="px-3 py-2">
               <Button
                 onClick={signAndConnect}
@@ -272,20 +403,17 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
               <p className="text-xs text-slate-500 mb-2">Switch Account</p>
               <div className="max-h-24 overflow-y-auto space-y-1">
                 {accounts.filter(acc => acc.address !== currentAccount.address).map((account) => (
-                  <button
-                    key={account.address}
-                    onClick={() => switchAccount({ account })}
-                    className="w-full text-left p-2 text-xs bg-slate-50 hover:bg-slate-100 rounded border"
-                  >
-                    <p className="font-mono truncate">
-                      {formatAddress(account.address)}
-                    </p>
-                    {account.label && (
-                      <p className="text-slate-400 truncate mt-1">
-                        {account.label}
-                      </p>
-                    )}
-                  </button>
+                  <div key={account.address} className="text-xs bg-slate-50 hover:bg-slate-100 rounded border">
+                    <AccountItem
+                      account={account}
+                      currentAccount={currentAccount}
+                      authenticatedAddresses={authenticatedAddresses || []}
+                      onSwitchAccount={(acc) => switchAccount({ account: acc })}
+                      onSignAndConnect={signAndConnect}
+                      isConnecting={isConnecting}
+                      formatAddress={formatAddress}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -332,40 +460,7 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
       {showWallets && (
         <div className="absolute top-full mt-1 right-0 bg-white border rounded-lg shadow-lg py-2 min-w-64 z-50">
           {accounts.length > 1 && (
-            <>
-              <div className="px-3 py-2 border-b">
-                <p className="text-sm font-medium">Switch Account</p>
-              </div>
-              {accounts.map((account) => (
-                <button
-                  key={account.address}
-                  onClick={() => {
-                    if (account.address !== currentAccount.address) {
-                      switchAccount({ account });
-                    }
-                    setShowWallets(false);
-                  }}
-                  className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 w-full text-left ${
-                    account.address === currentAccount.address ? 'bg-blue-50 text-blue-700' : ''
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-mono text-xs truncate">
-                      {formatAddress(account.address)}
-                    </p>
-                    {account.label && (
-                      <p className="text-xs text-gray-500 mt-1 truncate">
-                        {account.label}
-                      </p>
-                    )}
-                  </div>
-                  {account.address === currentAccount.address && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full ml-2"></div>
-                  )}
-                </button>
-              ))}
-              <div className="border-t my-1"></div>
-            </>
+            <AccountSwitchingSection />
           )}
 
           <button
