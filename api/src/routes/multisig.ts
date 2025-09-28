@@ -183,4 +183,50 @@ multisigRouter.post('/:address/accept', async (c) => {
   return c.json(result);
 });
 
+// Reject participation in a multisig scheme
+multisigRouter.post('/:address/reject', async (c) => {
+  const { publicKey, signature } = await c.req.json();
+  const { address } = c.req.param();
+
+  // Validate signature with rejection-specific message
+  const senderAddress = await validatePersonalMessage(
+    publicKey,
+    signature,
+    `Rejecting multisig invitation ${address}`,
+  );
+
+  if (!senderAddress) throw new ValidationError('Invalid signature');
+
+  const multisig = await getMultisig(address);
+
+  if (multisig.isVerified)
+    throw new ValidationError('Multisig is already verified');
+
+  const isMember = multisig.members.find((x) => x?.publicKey == publicKey);
+  if (!isMember)
+    throw new ValidationError('You are not a member of this multisig');
+
+  if (isMember.isAccepted)
+    throw new ValidationError('Cannot reject after accepting');
+
+  const result = await db.transaction(async (tx) => {
+    // Delete the entire multisig and all its members
+    // Since a rejected multisig can never work, we remove it completely
+    await tx
+      .delete(SchemaMultisigMembers)
+      .where(eq(SchemaMultisigMembers.multisigAddress, address));
+
+    await tx
+      .delete(SchemaMultisigs)
+      .where(eq(SchemaMultisigs.address, address));
+
+    return {
+      message: 'Multisig invitation rejected and removed',
+      address,
+    };
+  });
+
+  return c.json(result);
+});
+
 export default multisigRouter;

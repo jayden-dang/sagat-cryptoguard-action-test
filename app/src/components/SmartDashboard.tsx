@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useUserMultisigs } from "../hooks/useUserMultisigs";
 import { Dashboard } from "./Dashboard";
-import { Plus, Users, Mail } from "lucide-react";
+import { Plus, Mail } from "lucide-react";
 import { Button } from "./ui/button";
 import { Loading } from "./ui/loading";
 

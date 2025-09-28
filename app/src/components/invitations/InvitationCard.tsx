@@ -3,6 +3,7 @@ import { Users, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
 import { CopyButton } from "../ui/CopyButton";
 import { useAcceptInvitation } from "../../hooks/useAcceptInvitation";
+import { useRejectInvitation } from "../../hooks/useRejectInvitation";
 import { apiClient } from "../../lib/api";
 import { InvitationDetails } from "./InvitationDetails";
 import { SimplifiedMultisig } from "../../types/multisig";
@@ -17,6 +18,7 @@ export function InvitationCard({ multisig }: InvitationCardProps) {
   const [multisigDetails, setMultisigDetails] = useState<any>(null);
   const [processingInvite, setProcessingInvite] = useState(false);
   const acceptInvitation = useAcceptInvitation();
+  const rejectInvitation = useRejectInvitation();
 
   const toggleExpanded = async () => {
     if (isExpanded) {
@@ -44,8 +46,10 @@ export function InvitationCard({ multisig }: InvitationCardProps) {
   };
 
   const handleReject = () => {
-    // TODO: Implement reject functionality
-    console.log('Reject invitation for:', multisig.address);
+    setProcessingInvite(true);
+    rejectInvitation.mutate(multisig.address, {
+      onSettled: () => setProcessingInvite(false)
+    });
   };
 
   return (

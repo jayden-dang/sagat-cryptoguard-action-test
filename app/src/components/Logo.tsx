@@ -44,7 +44,7 @@ export function Logo({ showSubtitle = true, size = "md", asLink = true }: LogoPr
           SAGAT
         </span>
         {showSubtitle && (
-          <span className={`${classes.subtitle} text-gray-500 -mt-1`}>Multisig Manager</span>
+          <span className={`${classes.subtitle} text-gray-400 -mt-0.5`}>Sui Multisig Manager</span>
         )}
       </div>
     </div>

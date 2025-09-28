@@ -103,6 +103,16 @@ class ApiClient {
     });
   }
 
+  async rejectMultisigInvite(
+    address: string,
+    data: AcceptMultisigRequest
+  ): Promise<{ message: string; address: string }> {
+    return this.request<{ message: string; address: string }>(`/multisig/${address}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Proposal endpoints
   async createProposal(data: CreateProposalRequest): Promise<Proposal> {
     return this.request<Proposal>('/proposals', {
