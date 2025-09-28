@@ -1,22 +1,49 @@
 import { Hono } from 'hono';
-import {
-  SchemaMultisigMembers,
-  SchemaMultisigs,
-} from '../db/schema';
+import { SchemaMultisigMembers, SchemaMultisigs } from '../db/schema';
 import { parsePublicKey } from '../utils/pubKey';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { MultiSigPublicKey } from '@mysten/sui/multisig';
 import {
+  getMultisig,
   isMultisigFinalized,
   isMultisigMember,
+  jwtHasMultisigMemberAccess,
   validateQuorum,
 } from '../services/multisig.service';
-import { validatePersonalMessage, registerPublicKeyStrings } from '../services/addresses.service';
+import {
+  validatePersonalMessage,
+  registerPublicKeyStrings,
+} from '../services/addresses.service';
 import { PublicKey } from '@mysten/sui/cryptography';
 import { ValidationError } from '../errors';
+import { authMiddleware, AuthEnv } from '../services/auth.service';
+import { Context } from 'hono';
 
 const multisigRouter = new Hono();
+
+// Get multisig details by address (authenticated)
+multisigRouter.get('/:address', authMiddleware, async (c: Context<AuthEnv>) => {
+  const { address } = c.req.param();
+  const publicKeys = c.get('publicKeys');
+
+  // Verify the authenticated user is a member of this multisig
+  const hasAccess = await jwtHasMultisigMemberAccess(
+    address,
+    publicKeys,
+    false,
+  );
+
+  if (!hasAccess) {
+    return c.json(
+      { error: 'Access denied. You are not a member of this multisig.' },
+      403,
+    );
+  }
+
+  const multisig = await getMultisig(address);
+  return c.json(multisig);
+});
 
 multisigRouter.post('/', async (c) => {
   const {

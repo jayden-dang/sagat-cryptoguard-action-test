@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import {
-  MultisigMember,
   SchemaAddresses,
   SchemaMultisigMembers,
+  SchemaMultisigs,
 } from '../db/schema';
 import { db } from '../db';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -62,18 +62,50 @@ addressesRouter.get(
       whereConditions.push(eq(SchemaMultisigMembers.isAccepted, true));
     }
 
-    const members = await db.query.SchemaMultisigMembers.findMany({
-      where: and(...whereConditions),
-    });
+    // Get members with their multisig details via JOIN
+    const membersWithMultisig = await db
+      .select({
+        // Member fields
+        multisigAddress: SchemaMultisigMembers.multisigAddress,
+        publicKey: SchemaMultisigMembers.publicKey,
+        weight: SchemaMultisigMembers.weight,
+        isAccepted: SchemaMultisigMembers.isAccepted,
+        order: SchemaMultisigMembers.order,
+        // Multisig fields
+        name: SchemaMultisigs.name,
+        threshold: SchemaMultisigs.threshold,
+        isVerified: SchemaMultisigs.isVerified,
+      })
+      .from(SchemaMultisigMembers)
+      .leftJoin(
+        SchemaMultisigs,
+        eq(SchemaMultisigMembers.multisigAddress, SchemaMultisigs.address),
+      )
+      .where(and(...whereConditions));
 
-    // group per public key from the active JWT.
-    const grouped = members.reduce(
+    // Get member counts for each unique multisig
+    const uniqueAddresses = Array.from(new Set(membersWithMultisig.map(m => m.multisigAddress)));
+    const memberCounts: Record<string, number> = {};
+
+    for (const address of uniqueAddresses) {
+      const count = await db
+        .select()
+        .from(SchemaMultisigMembers)
+        .where(eq(SchemaMultisigMembers.multisigAddress, address));
+      memberCounts[address] = count.length;
+    }
+
+    // Group per public key from the active JWT
+    const grouped = membersWithMultisig.reduce(
       (acc, member) => {
         acc[member.publicKey] = acc[member.publicKey] || [];
-        acc[member.publicKey].push(member);
+        acc[member.publicKey].push({
+          ...member,
+          totalMembers: memberCounts[member.multisigAddress] || 0,
+        });
         return acc;
       },
-      {} as Record<string, MultisigMember[]>,
+      {} as Record<string, any[]>,
     );
 
     return c.json(grouped);

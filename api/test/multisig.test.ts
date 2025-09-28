@@ -58,8 +58,8 @@ describe('Multisig API', () => {
       );
 
       // Threshold too low
-      await expect(session.createMultisig(users[0], users, 1)).rejects.toThrow(
-        'Threshold must be greater than',
+      await expect(session.createMultisig(users[0], users, 0)).rejects.toThrow(
+        'Threshold must be greater or equal to 1',
       );
     });
   });

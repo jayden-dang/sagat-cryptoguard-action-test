@@ -1,47 +1,55 @@
 import { useQuery } from '@tanstack/react-query';
 import { useApiAuth } from '../contexts/ApiAuthContext';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { apiClient } from '../lib/api';
+import { extractPublicKey } from '../lib/wallet';
 
-interface MultisigMember {
+interface EnrichedMember {
   multisigAddress: string;
   publicKey: string;
+  weight: number;
   isAccepted: boolean;
-  threshold: number;
-  totalMembers: number;
+  order: number;
+  // From JOIN with multisigs table
   name?: string;
+  threshold: number;
+  isVerified: boolean;
+  totalMembers: number;
 }
 
 // Hook to fetch user's multisigs from the /addresses/connections endpoint
 export function useUserMultisigs(showPending = false) {
   const { isCurrentAddressAuthenticated, currentAddress } = useApiAuth();
+  const currentAccount = useCurrentAccount();
 
   return useQuery({
     queryKey: ['multisigs', 'user', currentAddress, showPending],
     queryFn: async () => {
+      if (!currentAccount) {
+        throw new Error('No wallet connected');
+      }
+
+      // Get the current account's public key in base64 format
+      const publicKey = extractPublicKey(
+        new Uint8Array(currentAccount.publicKey),
+        currentAccount.address
+      );
+      const pubKeyBase64 = publicKey.toBase64();
+
       // Get multisig connections grouped by public key
       const connections = await apiClient.getMultisigConnections(showPending);
 
-      // Flatten all multisigs from all public keys
-      const allMultisigs: MultisigMember[] = [];
-      Object.values(connections).forEach(multisigs => {
-        allMultisigs.push(...multisigs);
-      });
+      // Get multisigs for the current connected public key
+      const userMultisigs: EnrichedMember[] = connections[pubKeyBase64] || [];
 
-      // Deduplicate by multisig address and return formatted data
-      const uniqueMultisigs = new Map<string, MultisigMember>();
-      allMultisigs.forEach(m => {
-        if (!uniqueMultisigs.has(m.multisigAddress)) {
-          uniqueMultisigs.set(m.multisigAddress, m);
-        }
-      });
-
-      return Array.from(uniqueMultisigs.values()).map(m => ({
+      // Transform to the expected format for the Dashboard
+      return userMultisigs.map(m => ({
         address: m.multisigAddress,
         name: m.name || null,
-        threshold: m.threshold,
-        totalMembers: m.totalMembers,
+        threshold: m.threshold || 0,
+        totalMembers: m.totalMembers || 0,
         isAccepted: m.isAccepted,
-        isVerified: m.isAccepted,
+        isVerified: m.isVerified,
         pendingProposals: 0, // This would need to be fetched separately if needed
       }));
     },

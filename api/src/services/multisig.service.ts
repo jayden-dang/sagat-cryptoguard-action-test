@@ -72,8 +72,8 @@ export const validateQuorum = async (
     throw new ValidationError('Threshold must be less than the sum of weights');
   }
 
-  if (threshold <= 1) {
-    throw new ValidationError('Threshold must be greater than 1');
+  if (threshold < 1) {
+    throw new ValidationError('Threshold must be greater or equal to 1');
   }
 };
 

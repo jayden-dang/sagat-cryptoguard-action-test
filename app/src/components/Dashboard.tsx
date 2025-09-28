@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Plus, Users, FileText, ExternalLink } from 'lucide-react';
+import { useAcceptInvitation } from '../hooks/useAcceptInvitation';
 
 interface SimplifiedMultisig {
   address: string;
@@ -17,7 +18,8 @@ interface DashboardProps {
 }
 
 export function Dashboard({ multisigs }: DashboardProps) {
-  const [selectedMultisig, setSelectedMultisig] = useState<string | null>(null);
+  const [acceptingMultisig, setAcceptingMultisig] = useState<string | null>(null);
+  const acceptInvitation = useAcceptInvitation();
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -99,17 +101,24 @@ export function Dashboard({ multisigs }: DashboardProps) {
             <Button
               className="w-full mt-4"
               variant={multisig.isAccepted ? "outline" : "default"}
+              disabled={acceptingMultisig === multisig.address}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!multisig.isAccepted) {
-                  // TODO: Implement accept invitation flow
-                  console.log('Accept invitation for:', multisig.address);
+                  setAcceptingMultisig(multisig.address);
+                  acceptInvitation.mutate(multisig.address, {
+                    onSettled: () => setAcceptingMultisig(null)
+                  });
                 } else {
-                  setSelectedMultisig(multisig.address);
+                  // TODO: Navigate to multisig details view
+                  console.log('View details for:', multisig.address);
                 }
               }}
             >
-              {multisig.isAccepted ? 'View Details' : 'Accept Invitation'}
+              {acceptingMultisig === multisig.address ?
+                'Accepting...' :
+                (multisig.isAccepted ? 'View Details' : 'Accept Invitation')
+              }
             </Button>
           </div>
         ))}

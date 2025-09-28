@@ -88,6 +88,11 @@ class ApiClient {
     });
   }
 
+  async getMultisig(address: string): Promise<any> {
+    return this.request<any>(`/multisig/${address}`);
+  }
+
+
   async acceptMultisigInvite(
     address: string,
     data: AcceptMultisigRequest
