@@ -1,12 +1,45 @@
 import { getFullnodeUrl } from '@mysten/sui/client';
+import { SuiNetwork } from '../utils/client';
+import { ValidationError } from '../errors';
 
 const jwtSecret = process.env.JWT_SECRET;
-const suiEnv = process.env.SUI_ENV;
+const supportedNetworks = process.env.SUPPORTED_NETWORKS?.split(',').map(
+  (network) => network.trim(),
+);
 
 if (!jwtSecret) throw new Error('JWT_SECRET is not set');
-if (!suiEnv) throw new Error('SUI_ENV is not set');
+if (!supportedNetworks)
+  throw new Error(
+    'SUPPORTED_NETWORKS is not set. Please set it to a comma-separated list of supported networks.',
+  );
 
 export const JWT_SECRET = jwtSecret;
-export const SUI_ENV = suiEnv;
-export const SUI_RPC_URL =
-  process.env.SUI_RPC_URL || getFullnodeUrl(suiEnv as any);
+export const SUPPORTED_NETWORKS = supportedNetworks.map((network) => {
+  if (!['mainnet', 'testnet', 'devnet', 'localnet'].includes(network))
+    throw new Error(`Unsupported network: ${network}`);
+  return network as SuiNetwork;
+});
+
+export const SUI_RPC_URL_testnet =
+  process.env.SUI_RPC_URL_testnet || getFullnodeUrl('testnet');
+export const SUI_RPC_URL_mainnet =
+  process.env.SUI_RPC_URL_mainnet || getFullnodeUrl('mainnet');
+export const SUI_RPC_URL_devnet =
+  process.env.SUI_RPC_URL_devnet || getFullnodeUrl('devnet');
+export const SUI_RPC_URL_localnet =
+  process.env.SUI_RPC_URL_localnet || getFullnodeUrl('localnet');
+
+export const SUI_RPC_URL = {
+  mainnet: SUI_RPC_URL_mainnet,
+  testnet: SUI_RPC_URL_testnet,
+  devnet: SUI_RPC_URL_devnet,
+  localnet: SUI_RPC_URL_localnet,
+};
+
+export const validateNetwork = (network: string) => {
+  if (!SUPPORTED_NETWORKS.includes(network as SuiNetwork))
+    throw new ValidationError(
+      `Unsupported network: ${network}. Only ${SUPPORTED_NETWORKS.join(', ')} are supported.`,
+    );
+  return network as SuiNetwork;
+};

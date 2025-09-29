@@ -7,7 +7,6 @@ import {
   SchemaProposalSignatures,
 } from '../db/schema';
 import { ValidationError } from '../errors';
-
 // Get a proposal by id, and its signatures.
 export const getProposalById = async (proposalId: number) => {
   const result = await db
@@ -35,6 +34,7 @@ export const getProposalById = async (proposalId: number) => {
 
 export const getProposalsByMultisigAddress = async (
   multisigAddress: string,
+  network: string,
   status?: ProposalStatus,
 ) => {
   const proposalsWithSignatures = await db
@@ -48,6 +48,7 @@ export const getProposalsByMultisigAddress = async (
       and(
         eq(SchemaProposals.multisigAddress, multisigAddress),
         status ? eq(SchemaProposals.status, status) : undefined,
+        eq(SchemaProposals.network, network),
       ),
     );
 

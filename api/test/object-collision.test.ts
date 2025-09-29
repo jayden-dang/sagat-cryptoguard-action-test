@@ -54,6 +54,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes1.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature1.signature,
@@ -87,6 +88,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes2.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature2.signature,
@@ -133,6 +135,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes1.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature1.signature,
@@ -164,6 +167,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes2.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature2.signature,
@@ -212,6 +216,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes1.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature1.signature,
@@ -272,6 +277,7 @@ describe('Object Collision Detection', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             multisigAddress: multisig.address,
+            network: 'localnet',
             transactionBytes: txBytes.toBase64(),
             publicKey: users[0].publicKey,
             signature: signature.signature,
@@ -303,6 +309,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes11.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature11.signature,
@@ -357,6 +364,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes1.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature1.signature,
@@ -390,6 +398,7 @@ describe('Object Collision Detection', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           multisigAddress: multisig.address,
+          network: 'localnet',
           transactionBytes: txBytes2.toBase64(),
           publicKey: users[0].publicKey,
           signature: signature2.signature,

@@ -80,26 +80,35 @@ const addresses = pgTable('addresses', {
   address: text('address').notNull().unique(),
 });
 
-const proposals = pgTable('proposals', {
-  // The id of the proposal (sequential, so we can keep ordering)
-  id: serial('id').primaryKey(),
-  // The multisig address.
-  multisigAddress: text('multisig_address')
-    .notNull()
-    .references(() => multisigs.address),
-  // the digest of the proposed transaction (avoid duplicates)
-  digest: text('digest').notNull().unique(),
-  // The status of the proposal.
-  status: smallint('status').notNull().default(ProposalStatus.PENDING),
-  // The tx bytes of the proposed transaction.
-  transactionBytes: text('transaction_bytes').notNull(),
-  // The "built" tx bytes (after calling tx.build() with a client)
-  builtTransactionBytes: text('built_transaction_bytes').notNull(),
-  // The address of the proposer.
-  proposerAddress: text('proposer_address').notNull(),
-  // A description for the proposal.
-  description: varchar('description', { length: 1000 }),
-});
+const proposals = pgTable(
+  'proposals',
+  {
+    // The id of the proposal (sequential, so we can keep ordering)
+    id: serial('id').primaryKey(),
+    // The multisig address.
+    multisigAddress: text('multisig_address')
+      .notNull()
+      .references(() => multisigs.address),
+    // the digest of the proposed transaction (avoid duplicates)
+    digest: text('digest').notNull().unique(),
+    // The status of the proposal.
+    status: smallint('status').notNull().default(ProposalStatus.PENDING),
+    // The tx bytes of the proposed transaction.
+    transactionBytes: text('transaction_bytes').notNull(),
+    // The "built" tx bytes (after calling tx.build() with a client)
+    builtTransactionBytes: text('built_transaction_bytes').notNull(),
+    // The address of the proposer.
+    proposerAddress: text('proposer_address').notNull(),
+    // A description for the proposal.
+    description: varchar('description', { length: 1000 }),
+
+    // the network of the proposal
+    network: text('network').notNull(),
+  },
+  (table) => [
+    index('addr_network_idx').on(table.multisigAddress, table.network),
+  ],
+);
 
 // Store the signatures for a proposal.
 const proposalSignatures = pgTable(

@@ -237,6 +237,7 @@ export class TestSession {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         multisigAddress,
+        network: 'localnet',
         transactionBytes: txBytes.toBase64(),
         publicKey: proposer.publicKey,
         signature: signature.signature,

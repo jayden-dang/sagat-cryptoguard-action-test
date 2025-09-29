@@ -37,7 +37,7 @@ export function useCreateMultisig() {
 
       return apiClient.createMultisig(payload);
     },
-    onSuccess: (multisig) => {
+    onSuccess: () => {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['multisigs'] });
 

@@ -15,7 +15,8 @@ CREATE TABLE "multisig_members" (
 CREATE TABLE "multisigs" (
 	"address" text PRIMARY KEY NOT NULL,
 	"is_verified" boolean DEFAULT false NOT NULL,
-	"threshold" integer NOT NULL
+	"threshold" integer NOT NULL,
+	"name" varchar(255)
 );
 --> statement-breakpoint
 CREATE TABLE "proposal_signatures" (
@@ -33,6 +34,8 @@ CREATE TABLE "proposals" (
 	"transaction_bytes" text NOT NULL,
 	"built_transaction_bytes" text NOT NULL,
 	"proposer_address" text NOT NULL,
+	"description" varchar(1000),
+	"network" text NOT NULL,
 	CONSTRAINT "proposals_digest_unique" UNIQUE("digest")
 );
 --> statement-breakpoint
@@ -42,4 +45,5 @@ ALTER TABLE "proposal_signatures" ADD CONSTRAINT "proposal_signatures_proposal_i
 ALTER TABLE "proposal_signatures" ADD CONSTRAINT "proposal_signatures_public_key_addresses_public_key_fk" FOREIGN KEY ("public_key") REFERENCES "public"."addresses"("public_key") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "proposals" ADD CONSTRAINT "proposals_multisig_address_multisigs_address_fk" FOREIGN KEY ("multisig_address") REFERENCES "public"."multisigs"("address") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "multisig_member_idx" ON "multisig_members" USING btree ("multisig_address","public_key");--> statement-breakpoint
-CREATE INDEX "multisig_address_idx" ON "multisigs" USING btree ("address");
+CREATE INDEX "multisig_address_idx" ON "multisigs" USING btree ("address");--> statement-breakpoint
+CREATE INDEX "addr_network_idx" ON "proposals" USING btree ("multisig_address","network");

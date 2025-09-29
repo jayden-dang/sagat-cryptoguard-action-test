@@ -7,7 +7,6 @@ import {
   validateProposedTransaction,
 } from '../services/multisig.service';
 import { ValidationError } from '../errors';
-import { suiClient } from '../utils/client';
 import {
   ProposalStatus,
   proposalStatusFromString,
@@ -24,6 +23,8 @@ import {
 import { validatePersonalMessage } from '../services/addresses.service';
 import { eq } from 'drizzle-orm';
 import { AuthEnv, authMiddleware } from '../services/auth.service';
+import { getSuiClient, SuiNetwork } from '../utils/client';
+import { validateNetwork } from '../db/env';
 
 const proposalsRouter = new Hono();
 
@@ -35,7 +36,10 @@ proposalsRouter.post('/', async (c) => {
     publicKey,
     signature,
     description,
+    network,
   } = await c.req.json();
+
+  validateNetwork(network);
 
   if (!(await isMultisigMember(multisigAddress, publicKey)))
     throw new ValidationError('Proposer is not a member of the multisig');
@@ -53,10 +57,16 @@ proposalsRouter.post('/', async (c) => {
   // 1. No other pending proposal with the same owned objects in them.
   // 2. The transaction is fully resolved.
   // 3. The transaction is not already in a pending proposal.
-  await validateProposedTransaction(proposedTransaction, multisigAddress);
+  await validateProposedTransaction(
+    proposedTransaction,
+    multisigAddress,
+    network,
+  );
 
   // Build the transaction to verify the supplied user signature
-  const built = await proposedTransaction.build({ client: suiClient });
+  const built = await proposedTransaction.build({
+    client: getSuiClient(network),
+  });
 
   // Verify the supplied user signature.
   const pubKey = await parsePublicKey(publicKey);
@@ -78,6 +88,7 @@ proposalsRouter.post('/', async (c) => {
         builtTransactionBytes: built.toBase64(),
         proposerAddress: pubKey.toSuiAddress(),
         description,
+        network,
       })
       .returning();
 
@@ -182,7 +193,9 @@ proposalsRouter.post('/:proposalId/verify', async (c: Context<AuthEnv>) => {
   if (proposal.status !== ProposalStatus.PENDING)
     return c.json({ verified: true });
 
-  const tx = await suiClient.getTransactionBlock({
+  const tx = await getSuiClient(
+    proposal.network as SuiNetwork,
+  ).getTransactionBlock({
     digest: proposal.digest,
     options: { showEffects: true },
   });
@@ -204,13 +217,15 @@ proposalsRouter.post('/:proposalId/verify', async (c: Context<AuthEnv>) => {
 
 proposalsRouter.get('/', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
-  const { multisigAddress, status } = c.req.query();
+  const { multisigAddress, status, network } = c.req.query();
+  validateNetwork(network);
 
   if (!(await jwtHasMultisigMemberAccess(multisigAddress, publicKeys)))
     throw new ValidationError('Not a member of the multisig');
 
   const proposals = await getProposalsByMultisigAddress(
     multisigAddress,
+    network,
     status ? proposalStatusFromString(status) : undefined,
   );
 

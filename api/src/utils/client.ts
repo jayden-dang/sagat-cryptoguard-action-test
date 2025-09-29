@@ -1,11 +1,20 @@
 import { SuiClient, SuiObjectData } from '@mysten/sui/client';
 import { SUI_RPC_URL } from '../db/env';
 
-export const suiClient = new SuiClient({ url: SUI_RPC_URL });
+export type SuiNetwork = 'mainnet' | 'testnet' | 'devnet' | 'localnet';
+
+export const getSuiClient = (
+  network: SuiNetwork,
+) => {
+  return new SuiClient({ url: SUI_RPC_URL[network] });
+};
 
 // Query a list of objects
 // TODO: use a data loader to share queries across requests.
-export const queryAllOwnedObjects = async (objectIds: string[]) => {
+export const queryAllOwnedObjects = async (
+  objectIds: string[],
+  network: SuiNetwork,
+) => {
   const uniqueObjectIds = Array.from(new Set(objectIds));
 
   if (uniqueObjectIds.length === 0) {
@@ -19,7 +28,7 @@ export const queryAllOwnedObjects = async (objectIds: string[]) => {
   // Go through the batches & query the objects, pick out the `AddressOwner` ones.
   await Promise.all(
     batches.map(async (batch) => {
-      const objects = await suiClient.multiGetObjects({
+      const objects = await getSuiClient(network).multiGetObjects({
         ids: batch,
         options: { showOwner: true },
       });

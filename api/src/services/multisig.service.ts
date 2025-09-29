@@ -8,7 +8,7 @@ import {
 import { db } from '../db';
 import { ValidationError } from '../errors';
 import { Transaction } from '@mysten/sui/transactions';
-import { queryAllOwnedObjects } from '../utils/client';
+import { queryAllOwnedObjects, SuiNetwork } from '../utils/client';
 import { PublicKey } from '@mysten/sui/cryptography';
 
 // Returns the multisig with its members.
@@ -138,11 +138,12 @@ export const jwtHasMultisigMemberAccess = async (
 };
 
 // Get a list of pending proposals for a given multisig address.
-export const getPendingProposals = async (multisigAddress: string) => {
+export const getPendingProposals = async (multisigAddress: string, network: string) => {
   const proposals = await db.query.SchemaProposals.findMany({
     where: and(
       eq(SchemaProposals.multisigAddress, multisigAddress),
       eq(SchemaProposals.status, ProposalStatus.PENDING),
+      eq(SchemaProposals.network, network),
     ),
   });
   return proposals;
@@ -167,9 +168,10 @@ export const hasUnresolvedObjects = (tx: Transaction) => {
 export const validateProposedTransaction = async (
   proposedTransaction: Transaction,
   multisigAddress: string,
+  network: SuiNetwork,
 ) => {
   // Get the list of pending proposals.
-  const pendingProposals = await getPendingProposals(multisigAddress);
+  const pendingProposals = await getPendingProposals(multisigAddress, network);
 
   if (pendingProposals.length >= 10) {
     throw new ValidationError(
@@ -198,7 +200,7 @@ export const validateProposedTransaction = async (
     ownedOrReceivingObjects.push(...extractOwnedObjects(tx));
   }
   //   Query all the owned objects.
-  const allOwnedObjects = await queryAllOwnedObjects(ownedOrReceivingObjects);
+  const allOwnedObjects = await queryAllOwnedObjects(ownedOrReceivingObjects, network);
 
   if (
     allOwnedObjects.some((obj) =>
