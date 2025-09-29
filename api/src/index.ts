@@ -4,7 +4,7 @@ import multisigRouter from './routes/multisig';
 import { ValidationError } from './errors';
 import proposalsRouter from './routes/proposals';
 import authRouter from './routes/auth';
-import { SUI_RPC_URL, SUPPORTED_NETWORKS } from './db/env';
+import { SUI_RPC_URL, SUPPORTED_NETWORKS, CORS_ALLOWED_ORIGINS } from './db/env';
 import { cors } from 'hono/cors';
 import { SuiHTTPTransportError } from '@mysten/sui/client';
 
@@ -17,7 +17,12 @@ console.log(
 app.use(
   '*',
   cors({
-    origin: 'http://localhost:5173', // Vite's default dev server port
+    origin: (origin) => {
+      // Allow localhost for development
+      if (origin.startsWith('http://localhost:')) return origin;
+      // Check against allowed origins from environment
+      return CORS_ALLOWED_ORIGINS.includes(origin) ? origin : CORS_ALLOWED_ORIGINS[0];
+    },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 600,

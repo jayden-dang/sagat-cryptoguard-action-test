@@ -6,14 +6,22 @@ const jwtSecret = process.env.JWT_SECRET;
 const supportedNetworks = process.env.SUPPORTED_NETWORKS?.split(',').map(
   (network) => network.trim(),
 );
+const corsAllowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').map(
+  (origin) => origin.trim(),
+);
 
 if (!jwtSecret) throw new Error('JWT_SECRET is not set');
 if (!supportedNetworks)
   throw new Error(
     'SUPPORTED_NETWORKS is not set. Please set it to a comma-separated list of supported networks.',
   );
+if (!corsAllowedOrigins)
+  throw new Error(
+    'CORS_ALLOWED_ORIGINS is not set. Please set it to a comma-separated list of allowed origins.',
+  );
 
 export const JWT_SECRET = jwtSecret;
+export const CORS_ALLOWED_ORIGINS = corsAllowedOrigins;
 export const SUPPORTED_NETWORKS = supportedNetworks.map((network) => {
   if (!['mainnet', 'testnet', 'devnet', 'localnet'].includes(network))
     throw new Error(`Unsupported network: ${network}`);
