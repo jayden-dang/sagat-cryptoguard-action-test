@@ -9,8 +9,11 @@ import {
   smallint,
   primaryKey,
   varchar,
+  timestamp,
 } from 'drizzle-orm/pg-core';
 import { ValidationError } from '../errors';
+import { sql } from 'drizzle-orm';
+
 
 export enum ProposalStatus {
   PENDING = 0,
@@ -103,9 +106,10 @@ const proposals = pgTable(
     proposerAddress: text('proposer_address').notNull(),
     // A description for the proposal.
     description: varchar('description', { length: 1000 }),
-
     // the network of the proposal
     network: text('network').notNull(),
+    // The creation time of the proposal.
+    createdAt: timestamp('created_at').notNull().default(sql`NOW()`),
   },
   (table) => [
     index('proposals_addr_network_idx').on(table.multisigAddress, table.network),

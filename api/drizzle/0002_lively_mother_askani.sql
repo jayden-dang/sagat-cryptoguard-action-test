@@ -1,0 +1,1 @@
+ALTER TABLE "proposals" ADD COLUMN "created_at" timestamp DEFAULT NOW() NOT NULL;
