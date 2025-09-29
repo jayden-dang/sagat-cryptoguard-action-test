@@ -19,6 +19,17 @@ FROM base AS development
 
 # Build stage for production
 FROM development AS build
+
+# Accept build arguments
+ARG VITE_API_URL
+ARG VITE_SUI_NETWORKS
+ARG VITE_DEFAULT_NETWORK
+
+# Set environment variables for build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SUI_NETWORKS=$VITE_SUI_NETWORKS
+ENV VITE_DEFAULT_NETWORK=$VITE_DEFAULT_NETWORK
+
 RUN bun run build
 
 # Production stage with nginx
