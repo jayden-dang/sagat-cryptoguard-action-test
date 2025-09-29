@@ -112,6 +112,7 @@ export function useProposalsQueries({
     switch (activeFilter) {
       case 'pending':
         return proposals.filter((p) => {
+          if (p.status !== ProposalStatus.PENDING) return false;
           const hasUserSigned = userHasSignedProposal(p);
           const currentWeight = calculateCurrentWeight(p, multisigDetails);
           const totalWeight = getTotalWeight(multisigDetails);
@@ -121,6 +122,7 @@ export function useProposalsQueries({
 
       case 'waiting':
         return proposals.filter((p) => {
+          if (p.status !== ProposalStatus.PENDING) return false;
           const hasUserSigned = userHasSignedProposal(p);
           const currentWeight = calculateCurrentWeight(p, multisigDetails);
           const totalWeight = getTotalWeight(multisigDetails);
@@ -156,6 +158,7 @@ export function useProposalsQueries({
     }
 
     const pendingCount = pendingProposals.filter((p) => {
+      if (p.status !== ProposalStatus.PENDING) return false;
       const hasUserSigned = userHasSignedProposal(p);
       const currentWeight = calculateCurrentWeight(p, multisigDetails);
       const totalWeight = getTotalWeight(multisigDetails);
@@ -164,6 +167,7 @@ export function useProposalsQueries({
     }).length;
 
     const waitingCount = pendingProposals.filter((p) => {
+      if (p.status !== ProposalStatus.PENDING) return false;
       const hasUserSigned = userHasSignedProposal(p);
       const currentWeight = calculateCurrentWeight(p, multisigDetails);
       const totalWeight = getTotalWeight(multisigDetails);

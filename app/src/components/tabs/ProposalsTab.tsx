@@ -75,10 +75,8 @@ export function ProposalsTab() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col px-3">
       <div>
-        <h2 className="text-xl font-semibold mb-3">Proposals</h2>
-
         {/* Filter tabs */}
         <div className="flex gap-2">
           {filters.map((filter) => {
@@ -90,7 +88,7 @@ export function ProposalsTab() {
                   setActiveFilter(filter.id as typeof activeFilter)
                 }
                 className={`
-                  px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                  px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer
                   ${
                     isActive
                       ? "bg-blue-100 text-blue-700"

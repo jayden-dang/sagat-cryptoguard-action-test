@@ -12,6 +12,9 @@ import { calculateCurrentWeight, getTotalWeight } from '../../lib/proposalUtils'
 import { QueryKeys } from '../../lib/queryKeys';
 import { useExecuteProposal } from '../../hooks/useExecuteProposal';
 import { useVerifyProposal } from '../../hooks/useVerifyProposal';
+import { useCancelProposal } from '../../hooks/useCancelProposal';
+import { useSignProposal } from '../../hooks/useSignProposal';
+import { CancelProposalModal } from '../modals/CancelProposalModal';
 
 interface ProposalCardProps {
   proposal: ProposalWithSignatures;
@@ -22,8 +25,11 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
   const currentAccount = useCurrentAccount();
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedDigest, setCopiedDigest] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const executeProposalMutation = useExecuteProposal();
   const verifyProposalMutation = useVerifyProposal();
+  const cancelProposalMutation = useCancelProposal();
+  const signProposalMutation = useSignProposal();
 
   // Query to get full multisig details (including members with weights)
   const { data: multisigDetails } = useQuery({
@@ -51,7 +57,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
         multisigDetails
       },
       {
-        onError: (error) => {
+        onError: () => {
           // If execution fails, try to verify (it might have been executed by someone else)
           verifyProposalMutation.mutate(proposal.id);
         }
@@ -64,6 +70,19 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
     setCopiedDigest(true);
     setTimeout(() => setCopiedDigest(false), 2000);
   };
+
+  const handleCancelProposal = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    cancelProposalMutation.mutate(proposal.id, {
+      onSuccess: () => {
+        setShowCancelModal(false);
+      }
+    });
+  };
+
 
   const userHasSigned = () => {
     if (!currentAccount?.publicKey) return false;
@@ -165,6 +184,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-gray-500">
+            <span>ID: {proposal.id}</span>
             <span>Signatures: {calculateCurrentWeight(proposal, multisigDetails)}/{getTotalWeight(multisigDetails)}</span>
             <div className="flex items-center gap-1">
               <span>Digest: {proposal.digest.slice(0, 8)}...{proposal.digest.slice(-8)}</span>
@@ -195,14 +215,43 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
               {executeProposalMutation.isPending ? 'Executing...' : 'Execute'}
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            <Icon className="w-4 h-4 mr-1" />
-            {getToggleButtonText()}
-          </Button>
+          {proposal.status === ProposalStatus.PENDING && userHasSigned() && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancelProposal}
+              disabled={cancelProposalMutation.isPending}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              {cancelProposalMutation.isPending ? 'Cancelling...' : 'Cancel'}
+            </Button>
+          )}
+          {proposal.status === ProposalStatus.SUCCESS ? (
+            <Button
+              size="sm"
+              variant="outline"
+              asChild
+            >
+              <a
+                href={getExplorerUrl(proposal.digest)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Transaction
+              </a>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              <Icon className="w-4 h-4 mr-1" />
+              {getToggleButtonText()}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -212,6 +261,26 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
           <h6 className="font-medium text-red-800 mb-1">Failed to Execute Transaction</h6>
           <p className="text-sm text-red-600">
             {executeProposalMutation.error.message}
+          </p>
+        </div>
+      )}
+
+      {/* Sign Error */}
+      {signProposalMutation.error && (
+        <div className="mx-4 mb-4 border border-red-200 bg-red-50 rounded-lg p-3">
+          <h6 className="font-medium text-red-800 mb-1">Failed to Sign Proposal</h6>
+          <p className="text-sm text-red-600">
+            {signProposalMutation.error.message}
+          </p>
+        </div>
+      )}
+
+      {/* Cancel Error */}
+      {cancelProposalMutation.error && (
+        <div className="mx-4 mb-4 border border-red-200 bg-red-50 rounded-lg p-3">
+          <h6 className="font-medium text-red-800 mb-1">Failed to Cancel Proposal</h6>
+          <p className="text-sm text-red-600">
+            {cancelProposalMutation.error.message}
           </p>
         </div>
       )}
@@ -252,6 +321,8 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
             <ProposalPreview
               proposal={proposal}
               userHasSigned={userHasSigned()}
+              onCancel={handleCancelProposal}
+              isCancelling={cancelProposalMutation.isPending}
             />
           )}
 
@@ -270,6 +341,15 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
           )}
         </div>
       )}
+
+      {/* Cancel Confirmation Modal */}
+      <CancelProposalModal
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleConfirmCancel}
+        isLoading={cancelProposalMutation.isPending}
+        proposalId={proposal.id}
+      />
     </div>
   );
 }

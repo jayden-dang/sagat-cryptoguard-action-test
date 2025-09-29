@@ -4,6 +4,7 @@ import { useUserMultisigs } from "../hooks/useUserMultisigs";
 import { Plus, Mail } from "lucide-react";
 import { Button } from "./ui/button";
 import { Loading } from "./ui/loading";
+import { PendingMultisigCard } from "./PendingMultisigCard";
 
 export function SmartDashboard() {
   const { data: multisigs, isLoading } = useUserMultisigs(true); // Include pending
@@ -15,6 +16,7 @@ export function SmartDashboard() {
 
   const activeMultisigs = multisigs?.filter((m) => m.isAccepted && m.isVerified) ?? [];
   const pendingInvites = multisigs?.filter((m) => !m.isAccepted) ?? [];
+  const pendingMultisigs = multisigs?.filter((m) => m.isAccepted && !m.isVerified) ?? [];
 
   // Case 1: User has active multisigs - smart redirect
   if (activeMultisigs.length > 0) {
@@ -67,6 +69,27 @@ export function SmartDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Show pending multisigs if any */}
+      {pendingMultisigs.length > 0 && (
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-2xl font-semibold mb-4 text-center">Pending Multisigs</h2>
+          <p className="text-gray-600 mb-6 text-center">
+            These multisigs are being created on-chain. They'll be available once the creation transaction is confirmed.
+          </p>
+          <div className="space-y-3">
+            {pendingMultisigs.map((multisig) => (
+              <PendingMultisigCard
+                key={multisig.address}
+                address={multisig.address}
+                name={multisig.name}
+                threshold={multisig.threshold}
+                totalMembers={multisig.totalMembers}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

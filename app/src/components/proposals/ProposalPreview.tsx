@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ProposalWithSignatures } from '../../lib/types';
 import { useDryRun } from '../../hooks/useDryRun';
@@ -9,9 +9,11 @@ import { EffectsPreview } from '../preview-effects/EffectsPreview';
 interface ProposalPreviewProps {
   proposal: ProposalWithSignatures;
   userHasSigned: boolean;
+  onCancel?: () => void;
+  isCancelling?: boolean;
 }
 
-export function ProposalPreview({ proposal, userHasSigned }: ProposalPreviewProps) {
+export function ProposalPreview({ proposal, userHasSigned, onCancel, isCancelling }: ProposalPreviewProps) {
   const dryRunMutation = useDryRun();
   const signProposalMutation = useSignProposal();
 
@@ -35,25 +37,39 @@ export function ProposalPreview({ proposal, userHasSigned }: ProposalPreviewProp
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h5 className="font-medium text-gray-900">Transaction Preview</h5>
-        {isDryRunSuccessful && (
-          <div className="flex items-center gap-2">
-            {userHasSigned ? (
-              <div className="flex items-center gap-1 text-sm text-green-600">
-                <CheckCircle className="w-4 h-4" />
-                Already Signed
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                onClick={handleSignProposal}
-                disabled={signProposalMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {signProposalMutation.isPending ? 'Signing...' : 'Sign Proposal'}
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {isDryRunSuccessful && (
+            <>
+              {userHasSigned ? (
+                <div className="flex items-center gap-1 text-sm text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  Already Signed
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleSignProposal}
+                  disabled={signProposalMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {signProposalMutation.isPending ? 'Signing...' : 'Sign Proposal'}
+                </Button>
+              )}
+            </>
+          )}
+          {onCancel && !userHasSigned && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isCancelling}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <X className="w-4 h-4 mr-1" />
+              {isCancelling ? 'Cancelling...' : 'Cancel'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {dryRunMutation.isPending && (

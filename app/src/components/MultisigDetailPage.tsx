@@ -8,6 +8,9 @@ import { useState, useMemo, useEffect } from "react";
 import { ProposalSheet } from "./ProposalSheet";
 import { MultisigSelector } from "./MultisigSelector";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "../lib/api";
+import { QueryKeys } from "../lib/queryKeys";
 
 export function MultisigDetailPage() {
   const { address, tab } = useParams<{ address: string; tab?: string }>();
@@ -17,6 +20,14 @@ export function MultisigDetailPage() {
   const { copied, copy } = useCopyToClipboard();
 
   const { data: multisigs, isLoading } = useUserMultisigs(true);
+
+  // Query specific multisig details to check verification status
+  const { data: multisigDetails, isLoading: isLoadingDetails } = useQuery({
+    queryKey: [QueryKeys.Multisig, address],
+    queryFn: () => apiClient.getMultisig(address!),
+    enabled: !!address,
+    retry: false, // Don't retry if multisig doesn't exist
+  });
 
   // Filter for verified multisigs only
   const verifiedMultisigs = useMemo(
@@ -39,26 +50,22 @@ export function MultisigDetailPage() {
     }
   }, [address, verifiedMultisigs, currentAccount?.address]);
 
-  if (isLoading) {
+  if (isLoading || isLoadingDetails) {
     return <Loading message="Loading multisig details..." />;
   }
 
+  // If we're trying to access a specific multisig but it's not verified, redirect to dashboard
+  if (address && multisigDetails && !multisigDetails.isVerified) {
+    return <Navigate to="/" replace />;
+  }
+
+  // If we're trying to access a multisig that doesn't exist, redirect to dashboard
+  if (address && !isLoadingDetails && !multisigDetails) {
+    return <Navigate to="/" replace />;
+  }
+
   if (verifiedMultisigs.length === 0) {
-    return (
-      <div className="max-w-6xl mx-auto mt-8 px-4">
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No Active Multisigs
-          </h3>
-          <p className="text-gray-500 mb-4">
-            You don't have any verified multisigs available.
-          </p>
-          <Button onClick={() => navigate('/create')}>
-            Create Multisig
-          </Button>
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const multisig = verifiedMultisigs.find(m => m.address === address);

@@ -7,6 +7,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import { AddressLookupModal } from '../modals/AddressLookupModal';
+import { formatAddress } from "../../lib/formatters";
 
 interface MemberInputProps {
   member: Member;
@@ -105,7 +106,7 @@ export function MemberInput({ member, index, canRemove, onChange, onRemove }: Me
             <div className="text-xs text-gray-500 mt-1">
               <p>✓ Valid public key</p>
               <p className="text-gray-400 font-mono">
-                Address: {correspondingAddress.slice(0, 6)}...{correspondingAddress.slice(-4)}
+                Address: {formatAddress(correspondingAddress)}
               </p>
             </div>
           )}

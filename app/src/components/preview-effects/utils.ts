@@ -7,5 +7,5 @@ export const onChainAmountToFloat = (amount: string, decimals: number) => {
 };
 
 export const formatAddress = (address: string) => {
-	return `${address.substring(0, 4)}...${address.slice(-10)}`;
+	return `${address.slice(0, 6)}...${address.slice(-8)}`;
 };
