@@ -2,20 +2,23 @@ import { BrowserRouter, useLocation } from "react-router-dom";
 import { Header } from "./components/header";
 import { AppRouter } from "./components/AppRouter";
 import { TestModeBanner } from "./components/TestModeBanner";
+import { useNetwork } from "./contexts/NetworkContext";
 
 function AppContent() {
   const location = useLocation();
+  const { isTestMode } = useNetwork();
   const hideHeaderOnPaths = ['/create'];
   const hideBannerOnPaths = ['/create'];
   const shouldHideHeader = hideHeaderOnPaths.includes(location.pathname);
   const shouldHideBanner = hideBannerOnPaths.includes(location.pathname);
+  const showBanner = isTestMode && !shouldHideBanner;
 
   return (
-    <>
+    <div className={showBanner ? 'pb-20' : ''}>
       {!shouldHideHeader && <Header />}
       <AppRouter />
       {!shouldHideBanner && <TestModeBanner />}
-    </>
+    </div>
   );
 }
 

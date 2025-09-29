@@ -12,6 +12,7 @@ import { PublicKey } from '@mysten/sui/cryptography';
 import { parsePublicKey } from '../utils/pubKey';
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import { registerPublicKeys } from './addresses.service';
+import { ValidationError } from '../errors';
 
 const JWT_COOKIE_NAME = 'connected-wallet';
 
@@ -62,6 +63,13 @@ export const connectToPublicKey = async (c: Context) => {
       } catch (err) {
         // JWT is invalid or expired, start fresh
       }
+    }
+
+    // Only allow up to 10 pub keys per JWT, to control querying depth.
+    if (pubKeys.length >= 10) {
+      throw new ValidationError(
+        'You cannot connect to more than 10 addresses at the same time',
+      );
     }
 
     // Get the public key, signature, and expiry from the request body.

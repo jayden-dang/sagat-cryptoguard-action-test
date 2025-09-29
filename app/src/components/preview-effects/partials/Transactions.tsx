@@ -27,11 +27,11 @@ const getCallArgDisplay = (argument: SuiCallArg | undefined) => {
 		<PreviewCard.Root>
 			<PreviewCard.Body>
 				{Object.entries(argument)
-					.filter(([key, value]) => value !== null)
-					.map(([key, value]) => (
-						<div key={key} className="flex items-center flex-shrink-0 gap-3 mb-3 justify-stretch ">
-							<p className="capitalize min-w-[100px] flex-shrink-0">{key}: </p>
-							{key === 'objectId' ? (
+					.filter(([, value]) => value !== null)
+					.map(([argKey, value]) => (
+						<div key={argKey} className="flex items-center flex-shrink-0 gap-3 mb-3 justify-stretch ">
+							<p className="capitalize min-w-[100px] flex-shrink-0">{argKey}: </p>
+							{argKey === 'objectId' ? (
 								<ObjectLink inputObject={value as string} />
 							) : typeof value === 'object' ? (
 								JSON.stringify(value)

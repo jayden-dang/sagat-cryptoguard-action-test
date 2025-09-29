@@ -5,6 +5,10 @@ import { AuthPrompt } from "./AuthPrompt";
 import { SmartDashboard } from "./SmartDashboard";
 import { CreateMultisigPage } from "./CreateMultisigPage";
 import { InvitationsPage } from "./InvitationsPage";
+import { MultisigDetailPage } from "./MultisigDetailPage";
+import { ProposalsTab } from "./tabs/ProposalsTab";
+import { OverviewTab } from "./tabs/OverviewTab";
+import { AssetsTab } from "./tabs/AssetsTab";
 import { Loading } from "./ui/loading";
 import { CustomWalletButton } from "./CustomWalletButton";
 
@@ -44,6 +48,15 @@ export function AppRouter() {
       <Route path="/" element={<SmartDashboard />} />
       <Route path="/create" element={<CreateMultisigPage />} />
       <Route path="/invitations" element={<InvitationsPage />} />
+
+      {/* Multisig Detail Routes */}
+      <Route path="/multisig/:address" element={<MultisigDetailPage />}>
+        <Route index element={<Navigate to="proposals" replace />} />
+        <Route path="proposals" element={<ProposalsTab />} />
+        <Route path="overview" element={<OverviewTab />} />
+        <Route path="assets" element={<AssetsTab />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

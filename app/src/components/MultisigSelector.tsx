@@ -1,14 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Users, ChevronDown, Search } from 'lucide-react';
 import { formatAddress } from '../lib/formatters';
-
-interface SimplifiedMultisig {
-  address: string;
-  name: string | null;
-  threshold: number;
-  totalMembers: number;
-  pendingProposals: number;
-}
+import { SimplifiedMultisig } from '../types/multisig';
 
 interface MultisigSelectorProps {
   multisigs: SimplifiedMultisig[];
