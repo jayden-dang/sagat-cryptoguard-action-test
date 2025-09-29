@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Eye, ExternalLink, CheckCircle, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, ExternalLink, CheckCircle, Clock, Rocket, Copy, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/button';
 import { ProposalWithSignatures, ProposalStatus } from '../../lib/types';
@@ -10,6 +10,7 @@ import { ProposalPreview } from './ProposalPreview';
 import { apiClient } from '../../lib/api';
 import { calculateCurrentWeight, getTotalWeight } from '../../lib/proposalUtils';
 import { QueryKeys } from '../../lib/queryKeys';
+import { useExecuteProposal } from '../../hooks/useExecuteProposal';
 
 interface ProposalCardProps {
   proposal: ProposalWithSignatures;
@@ -19,6 +20,8 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
   const { network } = useNetwork();
   const currentAccount = useCurrentAccount();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [copiedDigest, setCopiedDigest] = useState(false);
+  const executeProposalMutation = useExecuteProposal();
 
   // Query to get full multisig details (including members with weights)
   const { data: multisigDetails } = useQuery({
@@ -30,6 +33,28 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
   });
 
   // Check if current user has already signed this proposal
+  // Check if the proposal is ready to execute
+  const isReadyToExecute = () => {
+    if (!multisigDetails || proposal.status !== ProposalStatus.PENDING) return false;
+    const currentWeight = calculateCurrentWeight(proposal, multisigDetails);
+    const threshold = getTotalWeight(multisigDetails);
+    return currentWeight >= threshold;
+  };
+
+  const handleExecuteProposal = () => {
+    if (!multisigDetails) return;
+    executeProposalMutation.mutate({
+      proposal,
+      multisigDetails
+    });
+  };
+
+  const handleCopyDigest = async () => {
+    await navigator.clipboard.writeText(proposal.digest);
+    setCopiedDigest(true);
+    setTimeout(() => setCopiedDigest(false), 2000);
+  };
+
   const userHasSigned = () => {
     if (!currentAccount?.publicKey) return false;
     const userPublicKey = extractPublicKey(
@@ -131,11 +156,35 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
 
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span>Signatures: {calculateCurrentWeight(proposal, multisigDetails)}/{getTotalWeight(multisigDetails)}</span>
-            <span>Digest: {proposal.digest.slice(0, 8)}...{proposal.digest.slice(-8)}</span>
+            <div className="flex items-center gap-1">
+              <span>Digest: {proposal.digest.slice(0, 8)}...{proposal.digest.slice(-8)}</span>
+              <button
+                onClick={handleCopyDigest}
+                className="p-0.5 hover:bg-gray-100 rounded transition-colors"
+                title="Copy full digest"
+              >
+                {copiedDigest ? (
+                  <Check className="w-3 h-3 text-green-600" />
+                ) : (
+                  <Copy className="w-3 h-3 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="ml-4">
+        <div className="ml-4 flex items-center gap-2">
+          {isReadyToExecute() && (
+            <Button
+              size="sm"
+              onClick={handleExecuteProposal}
+              disabled={executeProposalMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Rocket className="w-4 h-4 mr-1" />
+              {executeProposalMutation.isPending ? 'Executing...' : 'Execute'}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -146,6 +195,16 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
           </Button>
         </div>
       </div>
+
+      {/* Execute Error */}
+      {executeProposalMutation.error && (
+        <div className="mx-4 mb-4 border border-red-200 bg-red-50 rounded-lg p-3">
+          <h6 className="font-medium text-red-800 mb-1">Failed to Execute Transaction</h6>
+          <p className="text-sm text-red-600">
+            {executeProposalMutation.error.message}
+          </p>
+        </div>
+      )}
 
       {/* Expandable content */}
       {isExpanded && (

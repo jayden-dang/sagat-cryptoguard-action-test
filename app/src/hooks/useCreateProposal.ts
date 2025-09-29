@@ -48,7 +48,7 @@ export function useCreateProposal() {
       });
     },
     onSuccess: () => {
-      // Invalidate queries to refresh proposal data
+      // Invalidate all proposal-related queries
       queryClient.invalidateQueries({ queryKey: [QueryKeys.Proposals] });
       toast.success("Proposal created successfully!");
     },

@@ -36,6 +36,7 @@ app.onError((err, c) => {
   if (err instanceof ValidationError) {
     return c.json({ error: err.message }, 400);
   }
+  console.error('Unhandled error:', err);
   return c.json({ error: 'Internal Server Error' }, 500);
 });
 

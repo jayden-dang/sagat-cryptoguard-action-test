@@ -182,7 +182,7 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 });
 
 // Verify the execution of a proposal.
-proposalsRouter.post('/:proposalId/verify', async (c: Context<AuthEnv>) => {
+proposalsRouter.post('/:proposalId/verify', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
   const { proposalId } = c.req.param();
   const proposal = await getProposalById(parseInt(proposalId));

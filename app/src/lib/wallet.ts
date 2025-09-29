@@ -15,6 +15,19 @@ export function createAuthMessage(expiry: string): string {
   return `Verifying address ownership until: ${expiry}`;
 }
 
+export function extractPublicKeyFromBase64(publicKey: string): PublicKey {
+  try {
+    return new Ed25519PublicKey(publicKey);
+  } catch (err) {}
+  try {
+    return new Secp256k1PublicKey(publicKey);
+  } catch (err) {}
+  try {
+    return new Secp256r1PublicKey(publicKey);
+  } catch (err) {}
+  throw new Error("Invalid public key");
+}
+
 export function extractPublicKey(
   publicKey: Uint8Array,
   expectedAddress: string,
