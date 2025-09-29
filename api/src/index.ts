@@ -24,7 +24,17 @@ app.use(
     credentials: true,
   }),
 );
-// Health check.
+// Health check endpoint
+app.get('/health', (c) => {
+  return c.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    networks: SUPPORTED_NETWORKS,
+    version: '1.0.0'
+  });
+});
+
+// Root endpoint
 app.get('/', (c) => {
   return c.text(
     `Sagat API is up and running on networks: ${SUPPORTED_NETWORKS.join(', ')}`,
