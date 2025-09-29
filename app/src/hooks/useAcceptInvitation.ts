@@ -3,6 +3,7 @@ import { useSignPersonalMessage, useCurrentAccount } from '@mysten/dapp-kit';
 import { apiClient } from '../lib/api';
 import { toast } from 'sonner';
 import { extractPublicKey } from '../lib/wallet';
+import { QueryKeys } from '../lib/queryKeys';
 
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
@@ -35,7 +36,7 @@ export function useAcceptInvitation() {
     },
     onSuccess: () => {
       // Invalidate queries to refresh multisig data
-      queryClient.invalidateQueries({ queryKey: ['multisigs'] });
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.Multisigs] });
       toast.success('Invitation accepted successfully!');
     },
     onError: (error: Error) => {

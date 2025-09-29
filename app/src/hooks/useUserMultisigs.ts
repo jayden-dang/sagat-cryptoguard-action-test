@@ -3,6 +3,7 @@ import { useApiAuth } from '../contexts/ApiAuthContext';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { apiClient } from '../lib/api';
 import { extractPublicKey } from '../lib/wallet';
+import { QueryKeys } from '../lib/queryKeys';
 
 interface EnrichedMember {
   multisigAddress: string;
@@ -23,7 +24,7 @@ export function useUserMultisigs(showPending = false) {
   const currentAccount = useCurrentAccount();
 
   return useQuery({
-    queryKey: ['multisigs', 'user', currentAddress, showPending],
+    queryKey: [QueryKeys.Multisigs, QueryKeys.User, currentAddress, showPending],
     queryFn: async () => {
       if (!currentAccount) {
         throw new Error('No wallet connected');

@@ -1,10 +1,11 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSignTransaction, useCurrentAccount } from '@mysten/dapp-kit';
 import { apiClient } from '../lib/api';
 import { toast } from 'sonner';
 import { Transaction } from '@mysten/sui/transactions';
 import { extractPublicKey } from '@/lib/wallet';
 import { useNetwork } from '../contexts/NetworkContext';
+import { QueryKeys } from '../lib/queryKeys';
 
 interface CreateProposalParams {
   multisigAddress: string;
@@ -15,6 +16,7 @@ interface CreateProposalParams {
 export function useCreateProposal() {
   const { network } = useNetwork();
   const currentAccount = useCurrentAccount();
+  const queryClient = useQueryClient();
   const { mutateAsync: signTransaction } = useSignTransaction();
 
   return useMutation({
@@ -46,6 +48,8 @@ export function useCreateProposal() {
       });
     },
     onSuccess: () => {
+      // Invalidate queries to refresh proposal data
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.Proposals] });
       toast.success("Proposal created successfully!");
     },
   });

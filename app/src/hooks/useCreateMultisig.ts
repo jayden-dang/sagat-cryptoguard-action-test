@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import type { CreateMultisigForm } from '../lib/validations/multisig';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { extractPublicKey } from '../lib/wallet';
+import { QueryKeys } from '../lib/queryKeys';
 
 export function useCreateMultisig() {
   const queryClient = useQueryClient();
@@ -39,7 +40,7 @@ export function useCreateMultisig() {
     },
     onSuccess: () => {
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['multisigs'] });
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.Multisigs] });
 
       toast.success('Multisig created successfully!');
 

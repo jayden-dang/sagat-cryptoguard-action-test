@@ -9,6 +9,7 @@ import {
   extractPublicKey,
 } from "../lib/wallet";
 import { toast } from "sonner";
+import { QueryKeys } from "../lib/queryKeys";
 
 interface ApiAuthContextType {
   // Auth state from API
@@ -87,8 +88,8 @@ export function ApiAuthProvider({ children }: { children: React.ReactNode }) {
     },
     onSuccess: async () => {
       await refetchAuth();
-      await queryClient.invalidateQueries({ queryKey: ["multisigs"] });
-      await queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      await queryClient.invalidateQueries({ queryKey: [QueryKeys.Multisigs] });
+      await queryClient.invalidateQueries({ queryKey: [QueryKeys.Proposals] });
       toast.success("Successfully authenticated");
     },
     onError: (error: Error) => {

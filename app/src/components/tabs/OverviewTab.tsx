@@ -8,6 +8,7 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useNetwork } from '../../contexts/NetworkContext';
 import { SimplifiedMultisig } from '../../types/multisig';
 import { CONFIG } from '../../lib/constants';
+import { QueryKeys } from '../../lib/queryKeys';
 
 interface OverviewTabContext {
   multisig: SimplifiedMultisig;
@@ -26,9 +27,10 @@ export function OverviewTab() {
 
   // Fetch multisig details using React Query
   const { data: multisigDetails, isLoading, error, refetch } = useQuery({
-    queryKey: ['multisig', multisig.address],
+    queryKey: [QueryKeys.Multisig, multisig.address],
     queryFn: () => apiClient.getMultisig(multisig.address),
-    staleTime: CONFIG.STALE_TIME,
+    staleTime: Infinity, // Cache forever since multisig details are immutable
+    gcTime: Infinity, // Keep in cache forever
   });
 
   return (

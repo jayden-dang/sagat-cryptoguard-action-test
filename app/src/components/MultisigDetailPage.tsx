@@ -1,4 +1,5 @@
-import { useParams, useNavigate, NavLink, Outlet } from "react-router-dom";
+import { useParams, useNavigate, NavLink, Outlet, Navigate } from "react-router-dom";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useUserMultisigs } from "../hooks/useUserMultisigs";
 import { Loading } from "./ui/loading";
 import { Button } from "./ui/button";
@@ -11,6 +12,7 @@ import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 export function MultisigDetailPage() {
   const { address, tab } = useParams<{ address: string; tab?: string }>();
   const navigate = useNavigate();
+  const currentAccount = useCurrentAccount();
   const [showProposalSheet, setShowProposalSheet] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
@@ -27,19 +29,15 @@ export function MultisigDetailPage() {
     navigate(`/multisig/${newAddress}/${tab || 'proposals'}`);
   };
 
-  // Handle wallet changes - redirect to first available multisig or home
+
+  // Store the current multisig address in localStorage per wallet address
   useEffect(() => {
-    if (!isLoading && verifiedMultisigs.length > 0) {
-      const currentExists = verifiedMultisigs.some(m => m.address === address);
-      if (!currentExists) {
-        // Current multisig not available in new wallet, redirect to first available
-        navigate(`/multisig/${verifiedMultisigs[0].address}/${tab || 'proposals'}`, { replace: true });
-      }
-    } else if (!isLoading && verifiedMultisigs.length === 0 && address) {
-      // No multisigs available, go to welcome screen
-      navigate('/', { replace: true });
+    const multisig = verifiedMultisigs.find(m => m.address === address);
+    if (address && multisig?.isVerified && multisig?.isAccepted && currentAccount?.address) {
+      const lastViewedKey = `lastViewedMultisig_${currentAccount.address}`;
+      localStorage.setItem(lastViewedKey, address);
     }
-  }, [verifiedMultisigs, address, tab, navigate, isLoading]);
+  }, [address, verifiedMultisigs, currentAccount?.address]);
 
   if (isLoading) {
     return <Loading message="Loading multisig details..." />;
@@ -66,21 +64,8 @@ export function MultisigDetailPage() {
   const multisig = verifiedMultisigs.find(m => m.address === address);
 
   if (!multisig) {
-    return (
-      <div className="max-w-6xl mx-auto mt-8 px-4">
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Multisig Not Found
-          </h3>
-          <p className="text-gray-500 mb-4">
-            The multisig address you're looking for doesn't exist or you don't have access to it.
-          </p>
-          <Button onClick={() => navigate('/invitations')}>
-            View Invitations
-          </Button>
-        </div>
-      </div>
-    );
+    // Multisig not found for current wallet - redirect to dashboard which will handle smart routing
+    return <Navigate to="/" replace />;
   }
 
   const tabs = [

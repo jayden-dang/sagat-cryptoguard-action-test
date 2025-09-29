@@ -1,4 +1,5 @@
 import { Link, Navigate } from "react-router-dom";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useUserMultisigs } from "../hooks/useUserMultisigs";
 import { Plus, Mail } from "lucide-react";
 import { Button } from "./ui/button";
@@ -6,6 +7,7 @@ import { Loading } from "./ui/loading";
 
 export function SmartDashboard() {
   const { data: multisigs, isLoading } = useUserMultisigs(true); // Include pending
+  const currentAccount = useCurrentAccount();
 
   if (isLoading) {
     return <Loading message="Loading your multisigs..." />;
@@ -14,8 +16,22 @@ export function SmartDashboard() {
   const activeMultisigs = multisigs?.filter((m) => m.isAccepted && m.isVerified) ?? [];
   const pendingInvites = multisigs?.filter((m) => !m.isAccepted) ?? [];
 
-  // Case 1: User has active multisigs - redirect to first one
+  // Case 1: User has active multisigs - smart redirect
   if (activeMultisigs.length > 0) {
+    // Check if there's a last viewed multisig for this wallet address
+    const walletAddress = currentAccount?.address;
+    const lastViewedKey = walletAddress ? `lastViewedMultisig_${walletAddress}` : null;
+    const lastViewedMultisig = lastViewedKey ? localStorage.getItem(lastViewedKey) : null;
+
+    if (lastViewedMultisig) {
+      // Check if this multisig still belongs to the current address
+      const isValidMultisig = activeMultisigs.some(m => m.address === lastViewedMultisig);
+      if (isValidMultisig) {
+        return <Navigate to={`/multisig/${lastViewedMultisig}/proposals`} replace />;
+      }
+    }
+
+    // Default: redirect to first available multisig
     return <Navigate to={`/multisig/${activeMultisigs[0].address}/proposals`} replace />;
   }
 
