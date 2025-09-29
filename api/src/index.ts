@@ -4,11 +4,15 @@ import multisigRouter from './routes/multisig';
 import { ValidationError } from './errors';
 import proposalsRouter from './routes/proposals';
 import authRouter from './routes/auth';
-import { SUPPORTED_NETWORKS } from './db/env';
+import { SUI_RPC_URL, SUPPORTED_NETWORKS } from './db/env';
 import { cors } from 'hono/cors';
 import { SuiHTTPTransportError } from '@mysten/sui/client';
 
 const app = new Hono();
+
+console.log(
+  `Using RPC URLs: ${SUPPORTED_NETWORKS.map((n) => SUI_RPC_URL[n]).join(', ')}`,
+);
 
 app.use(
   '*',
