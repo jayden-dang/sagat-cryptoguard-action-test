@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useCurrentAccount, useConnectWallet, useDisconnectWallet, useWallets, useSwitchAccount, useAccounts } from "@mysten/dapp-kit";
 import { useApiAuth } from "../contexts/ApiAuthContext";
+import { useNetwork } from "../contexts/NetworkContext";
 import { Button } from "./ui/button";
-import { Wallet, ChevronDown, LogOut, Copy, Check, Shield, ArrowRight } from "lucide-react";
+import { Switch } from "./ui/switch";
+import { Wallet, ChevronDown, LogOut, Copy, Check, Shield, ArrowRight, Globe } from "lucide-react";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { formatAddress } from "../lib/formatters";
 
@@ -99,6 +101,7 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
   const { mutate: switchAccount } = useSwitchAccount();
   const wallets = useWallets();
   const { isCurrentAddressAuthenticated, signAndConnect, isConnecting, disconnect: apiDisconnect, authenticatedAddresses } = useApiAuth();
+  const { network, setNetwork, isTestMode } = useNetwork();
   const [showWallets, setShowWallets] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { copied, copy: copyAddress } = useCopyToClipboard();
@@ -151,6 +154,7 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
       setShowWallets(false);
     }
   };
+
 
   // Helper component for account switching section
   const AccountSwitchingSection = ({ showTitle = true }: { showTitle?: boolean }) => (
@@ -336,7 +340,14 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
           className="flex items-center gap-2"
         >
           <Shield className="w-3 h-3 text-blue-600" />
-          {formatAddress(currentAccount.address)}
+          <span>{formatAddress(currentAccount.address)}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded ${
+            isTestMode
+              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+              : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+          }`}>
+            {network}
+          </span>
           <ChevronDown className="w-3 h-3" />
         </Button>
 
@@ -450,7 +461,14 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
         className="flex items-center gap-2"
       >
         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-        {formatAddress(currentAccount.address)}
+        <span>{formatAddress(currentAccount.address)}</span>
+        <span className={`text-xs px-1.5 py-0.5 rounded ${
+          isTestMode
+            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+            : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+        }`}>
+          {network}
+        </span>
         <ChevronDown className="w-3 h-3" />
       </Button>
 
@@ -467,6 +485,19 @@ export function CustomWalletButton({ variant = "header", disableAccountSwitching
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? "Copied!" : "Copy Address"}
           </button>
+          <div className="border-t my-1"></div>
+          <div className="flex items-center justify-between px-3 py-2 text-sm">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              <span>Test Mode</span>
+            </div>
+            <Switch
+              checked={isTestMode}
+              onCheckedChange={(checked) => setNetwork(checked ? "testnet" : "mainnet")}
+              className="scale-75"
+            />
+          </div>
+          <div className="border-t my-1"></div>
           <button
             onClick={handleFullDisconnect}
             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 w-full text-left text-red-600"

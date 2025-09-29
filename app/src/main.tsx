@@ -9,20 +9,26 @@ import App from "./App.tsx";
 import { networkConfig } from "./networkConfig.ts";
 import { Toaster } from "sonner";
 import { ApiAuthProvider } from "./contexts/ApiAuthContext.tsx";
+import { NetworkProvider } from "./contexts/NetworkContext.tsx";
 
 const queryClient = new QueryClient();
+
+// Get stored network or default to testnet
+const storedNetwork = (localStorage.getItem("suiNetwork") as "testnet" | "mainnet") || "testnet";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     {/* <Theme appearance="dark"> */}
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
-        <WalletProvider autoConnect>
-          <ApiAuthProvider>
-            <App />
-          </ApiAuthProvider>
-        </WalletProvider>
-      </SuiClientProvider>
+      <NetworkProvider>
+        <SuiClientProvider networks={networkConfig} defaultNetwork={storedNetwork}>
+          <WalletProvider autoConnect>
+            <ApiAuthProvider>
+              <App />
+            </ApiAuthProvider>
+          </WalletProvider>
+        </SuiClientProvider>
+      </NetworkProvider>
     </QueryClientProvider>
 
     <Toaster />

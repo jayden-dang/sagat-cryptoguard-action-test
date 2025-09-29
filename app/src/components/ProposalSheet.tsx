@@ -13,6 +13,7 @@ import { useDryRun } from '../hooks/useDryRun';
 import { EffectsPreview } from './preview-effects/EffectsPreview';
 import { Eye, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNetwork } from '../contexts/NetworkContext';
 
 interface ProposalSheetProps {
   open: boolean;
@@ -35,6 +36,8 @@ const proposalSchema = z.object({
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
 export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalSheetProps) {
+  const { network } = useNetwork();
+
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalSchema),
     defaultValues: {
@@ -58,7 +61,8 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
     console.log({
       description: data.description,
       transactionData: JSON.parse(data.transactionData),
-      multisigAddress
+      multisigAddress,
+      network
     });
 
     toast.success('Proposal created successfully');
@@ -97,10 +101,21 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent className="!w-[60vw] sm:!w-[70vw] !max-w-none px-8">
         <SheetHeader>
-          <SheetTitle>Create New Proposal</SheetTitle>
-          <SheetDescription>
-            Create a new proposal for the multisig to vote on.
-          </SheetDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <SheetTitle>Create New Proposal</SheetTitle>
+              <SheetDescription>
+                Create a new proposal for the multisig to vote on.
+              </SheetDescription>
+            </div>
+            <span className={`text-xs px-2 py-1 rounded ${
+              network === "testnet"
+                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+            }`}>
+              {network}
+            </span>
+          </div>
         </SheetHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-8 pb-8">
