@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DryRunTransactionBlockResponse, GasCostSummary } from '@mysten/sui/client';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 import { ObjectLink } from '../ObjectLink';
 import { onChainAmountToFloat } from '../utils';
@@ -23,8 +24,26 @@ const calculateGas = (gas: GasCostSummary): string => {
 export function Overview({ output }: { output: DryRunTransactionBlockResponse }) {
 	// TODO(fix): Get network from app config/context
 	const network = 'testnet';
+	const [copied, setCopied] = useState(false);
+
+	const copyToClipboard = (text: string) => {
+		navigator.clipboard.writeText(text);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	};
 
 	const metadata: Record<string, ReactNode> = {
+		digest: (
+			<div className="flex items-center gap-2">
+				<span className="font-mono text-sm break-all">{output.effects.transactionDigest}</span>
+				<button
+					onClick={() => copyToClipboard(output.effects.transactionDigest)}
+					className="p-1 hover:bg-gray-100 rounded"
+				>
+					{copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-gray-600" />}
+				</button>
+			</div>
+		),
 		network,
 		status:
 			output.effects.status?.status === 'success'
@@ -32,7 +51,6 @@ export function Overview({ output }: { output: DryRunTransactionBlockResponse })
 				: output.effects.status?.status === 'failure'
 					? '❌ Transaction failed to execute!'
 					: null,
-
 		sender: (
 			<span className="flex gap-2 items-center">
 				<ObjectLink

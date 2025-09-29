@@ -10,7 +10,7 @@ import { onChainAmountToFloat } from '../utils';
 
 export function BalanceChanges({ changes }: { changes: BalanceChange[] }) {
 	return (
-		<div className="grid grid-cols-2 gap-4 even:bg-gray-900">
+		<div className="grid grid-cols-2 gap-4">
 			{changes.map((change, index) => (
 				<ChangedBalance key={index} change={change} />
 			))}
@@ -52,11 +52,11 @@ function ChangedBalance({ change }: { change: BalanceChange }) {
 						/>
 					)}
 					<p>
-						<span className={`${Number(amount()) > 0.0 ? 'text-green-300' : 'text-red-700'}`}>
+						<span className={`${Number(amount()) > 0.0 ? 'text-green-700' : 'text-red-700'}`}>
 							{amount()}{' '}
 						</span>{' '}
 						{coinMetadata.symbol}
-						<span className="block text-sm">{change.coinType}</span>
+						<span className="block text-sm text-gray-600">{change.coinType}</span>
 					</p>
 				</>
 			</PreviewCard.Body>

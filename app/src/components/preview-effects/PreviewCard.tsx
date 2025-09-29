@@ -36,12 +36,12 @@ function Body({ children }: BodyProps) {
 
 function Header({ children }: HeaderProps) {
 	return (
-		<div className="bg-gray-900 py-3 px-2 text-sm overflow-x-auto break-words">{children}</div>
+		<div className="bg-gray-100 py-3 px-2 text-sm overflow-x-auto break-words">{children}</div>
 	);
 }
 function Footer({ children, owner }: FooterProps & { owner?: ObjectOwner }) {
 	return (
-		<div className="mt-auto bg-gray-900 py-3 px-2 text-sm overflow-x-auto break-words">
+		<div className="mt-auto bg-gray-100 py-3 px-2 text-sm overflow-x-auto break-words">
 			{children}
 			{owner && (
 				<div className="flex items-center ">

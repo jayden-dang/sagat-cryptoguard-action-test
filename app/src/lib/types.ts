@@ -58,6 +58,7 @@ export interface CreateProposalRequest {
   publicKey: string;
   signature: string;
   description?: string;
+  network: string;
 }
 
 export interface Proposal {
@@ -71,14 +72,17 @@ export interface Proposal {
   description: string | null;
   totalWeight: number;
   currentWeight: number;
+  network: string;
 }
 
 export interface ProposalSignature {
   proposalId: number;
   publicKey: string;
   signature: string;
-  address: string;
-  weight: number;
+}
+
+export interface ProposalWithSignatures extends Proposal {
+  signatures: ProposalSignature[];
 }
 
 export interface VoteProposalRequest {

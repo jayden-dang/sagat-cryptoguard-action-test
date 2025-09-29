@@ -138,7 +138,10 @@ export const jwtHasMultisigMemberAccess = async (
 };
 
 // Get a list of pending proposals for a given multisig address.
-export const getPendingProposals = async (multisigAddress: string, network: string) => {
+export const getPendingProposals = async (
+  multisigAddress: string,
+  network: string,
+) => {
   const proposals = await db.query.SchemaProposals.findMany({
     where: and(
       eq(SchemaProposals.multisigAddress, multisigAddress),
@@ -151,17 +154,15 @@ export const getPendingProposals = async (multisigAddress: string, network: stri
 
 // Extracts all the owned or receiving objects from a supplied transaction.
 export const extractOwnedObjects = (tx: Transaction) => {
-  return tx
-    .getData()
-    .inputs.filter(
-      (x) => x.$kind === 'Object' && x.Object.$kind === 'ImmOrOwnedObject',
-    )
-    .map((x) => x.Object!.ImmOrOwnedObject!.objectId);
-};
-
-// Returns true if the transaction has unresolved objects.
-export const hasUnresolvedObjects = (tx: Transaction) => {
-  return tx.getData().inputs.some((x) => x.$kind === 'UnresolvedObject');
+  return [
+    ...tx
+      .getData()
+      .inputs.filter(
+        (x) => x.$kind === 'Object' && x.Object.$kind === 'ImmOrOwnedObject',
+      )
+      .map((x) => x.Object!.ImmOrOwnedObject!.objectId),
+    ...(tx.getData().gasData?.payment?.map((x) => x.objectId) || []),
+  ];
 };
 
 // Validates a proposed transaction.
@@ -200,15 +201,23 @@ export const validateProposedTransaction = async (
     ownedOrReceivingObjects.push(...extractOwnedObjects(tx));
   }
   //   Query all the owned objects.
-  const allOwnedObjects = await queryAllOwnedObjects(ownedOrReceivingObjects, network);
+  const allOwnedObjects = await queryAllOwnedObjects(
+    ownedOrReceivingObjects,
+    network,
+  );
 
-  if (
-    allOwnedObjects.some((obj) =>
-      extractOwnedObjects(proposedTransaction).includes(obj.objectId),
-    )
-  ) {
+  const allUsedOwnedObjects = [];
+
+  for (const obj of allOwnedObjects) {
+    if (ownedOrReceivingObjects.includes(obj.objectId)) {
+      allUsedOwnedObjects.push(obj);
+    }
+  }
+
+  if (allUsedOwnedObjects.length > 0) {
     throw new ValidationError(
-      'You cannot have re-use any owned or receivingobjects that are already in pending proposals.',
+      'You cannot have re-use any owned or receiving objects that are already in pending proposals. The used objects are: ' +
+        allUsedOwnedObjects.map((obj) => obj.objectId).join(', '),
     );
   }
 };

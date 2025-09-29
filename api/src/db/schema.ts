@@ -105,9 +105,7 @@ const proposals = pgTable(
     // the network of the proposal
     network: text('network').notNull(),
   },
-  (table) => [
-    index('addr_network_idx').on(table.multisigAddress, table.network),
-  ],
+  (table) => [index('addr_network_idx').on(table.multisigAddress, table.network)],
 );
 
 // Store the signatures for a proposal.

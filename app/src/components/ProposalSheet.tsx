@@ -1,19 +1,20 @@
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from './ui/sheet';
-import { Button } from './ui/button';
-import { useDryRun } from '../hooks/useDryRun';
-import { EffectsPreview } from './preview-effects/EffectsPreview';
-import { Eye, CheckCircle, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { useNetwork } from '../contexts/NetworkContext';
+} from "./ui/sheet";
+import { Button } from "./ui/button";
+import { useDryRun } from "../hooks/useDryRun";
+import { EffectsPreview } from "./preview-effects/EffectsPreview";
+import { Eye, CheckCircle, AlertCircle } from "lucide-react";
+import { useCreateProposal } from "../hooks/useCreateProposal";
+import { useNetwork } from "../contexts/NetworkContext";
 
 interface ProposalSheetProps {
   open: boolean;
@@ -22,54 +23,77 @@ interface ProposalSheetProps {
 }
 
 const proposalSchema = z.object({
-  description: z.string().min(1, 'Description is required'),
-  transactionData: z.string().min(1, 'Transaction data is required').refine((data) => {
-    try {
-      JSON.parse(data);
-      return true;
-    } catch {
-      return false;
-    }
-  }, 'Must be valid JSON'),
+  description: z.string().optional(),
+  transactionData: z
+    .string()
+    .min(1, "Transaction data is required")
+    .refine((data) => {
+      try {
+        // Try parsing as JSON first
+        JSON.parse(data);
+        return true;
+      } catch {
+        // If JSON parsing fails, check if it's a valid base64 string
+        try {
+          atob(data);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    }, "Must be valid JSON or base64"),
 });
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
-export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalSheetProps) {
+export function ProposalSheet({
+  open,
+  onOpenChange,
+  multisigAddress,
+}: ProposalSheetProps) {
   const { network } = useNetwork();
 
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalSchema),
     defaultValues: {
-      description: '',
-      transactionData: '',
+      description: "",
+      transactionData: "",
     },
   });
 
   const dryRunMutation = useDryRun();
+  const createProposalMutation = useCreateProposal();
+
+  // Handle successful proposal creation
+  const handleCreateSuccess = () => {
+    onOpenChange(false);
+    form.reset();
+    dryRunMutation.reset();
+  };
+
+  // Trigger success handler when mutation succeeds
+  useEffect(() => {
+    if (createProposalMutation.isSuccess) {
+      handleCreateSuccess();
+      createProposalMutation.reset(); // Reset the mutation state
+    }
+  }, [createProposalMutation.isSuccess]);
 
   // Check if dry run was successful
-  const isDryRunSuccessful = dryRunMutation.isSuccess && dryRunMutation.data?.effects?.status?.status === 'success';
+  const isDryRunSuccessful =
+    dryRunMutation.isSuccess &&
+    dryRunMutation.data?.effects?.status?.status === "success";
 
   const onSubmit = (data: ProposalFormData) => {
     if (!isDryRunSuccessful) {
-      toast.error('Please preview the transaction first');
       return;
     }
 
-    // TODO: Implement proposal creation
-    console.log({
-      description: data.description,
-      transactionData: JSON.parse(data.transactionData),
+    createProposalMutation.mutate({
       multisigAddress,
-      network
+      transactionData: data.transactionData,
+      description: data.description,
     });
-
-    toast.success('Proposal created successfully');
-
-    // Close sheet and reset form
-    onOpenChange(false);
-    form.reset();
   };
 
   const handleClose = (open: boolean) => {
@@ -77,29 +101,33 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
     if (!open) {
       form.reset();
       dryRunMutation.reset();
+      createProposalMutation.reset();
     }
   };
 
   const handlePreview = () => {
-    const transactionData = form.getValues('transactionData');
+    const transactionData = form.getValues("transactionData");
     if (transactionData) {
       dryRunMutation.mutate(transactionData);
     }
   };
 
   // Watch for transaction data changes
-  const transactionData = form.watch('transactionData');
+  const transactionData = form.watch("transactionData");
 
-  // Reset mutation when transaction data changes (user edits after preview)
+  // Reset mutations when transaction data changes (user edits after preview/error)
   const handleTransactionDataChange = () => {
     if (dryRunMutation.data || dryRunMutation.error) {
       dryRunMutation.reset();
+    }
+    if (createProposalMutation.error) {
+      createProposalMutation.reset();
     }
   };
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent className="!w-full sm:!w-[70vw] !max-w-none px-4 sm:px-8">
+      <SheetContent className="!w-full sm:!w-[70vw] !max-w-none px-4 sm:px-8 overflow-y-auto">
         <SheetHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -108,39 +136,30 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
                 Create a new proposal for the multisig to vote on.
               </SheetDescription>
             </div>
-            <span className={`text-xs px-2 py-1 rounded ${
-              network === "testnet"
-                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-            }`}>
+            <span
+              className={`text-xs px-2 py-1 rounded ${
+                network === "testnet"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                  : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+              }`}
+            >
               {network}
             </span>
           </div>
         </SheetHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-8 pb-8">
-          {/* Description */}
-          <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <textarea
-              id="description"
-              placeholder="Describe what this proposal does..."
-              {...form.register('description')}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-            {form.formState.errors.description && (
-              <p className="text-sm text-red-600">{form.formState.errors.description.message}</p>
-            )}
-          </div>
-
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-8 mt-8 pb-8"
+        >
           {/* Transaction Data */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label htmlFor="transaction-data" className="text-sm font-medium text-gray-700">
-                Transaction Data (JSON)
+              <label
+                htmlFor="transaction-data"
+                className="text-sm font-medium text-gray-700"
+              >
+                Transaction Data (JSON or base64)
               </label>
               {transactionData && (
                 <Button
@@ -151,41 +170,51 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
                   disabled={dryRunMutation.isPending || !transactionData}
                 >
                   <Eye className="w-4 h-4 mr-1" />
-                  {dryRunMutation.isPending ? 'Previewing...' : 'Preview Effects'}
+                  {dryRunMutation.isPending
+                    ? "Previewing..."
+                    : "Preview Effects"}
                 </Button>
               )}
             </div>
             <textarea
               id="transaction-data"
-              placeholder="Enter transaction data in JSON format..."
-              {...form.register('transactionData', {
-                onChange: handleTransactionDataChange
+              placeholder="Enter transaction data in JSON format or base64..."
+              {...form.register("transactionData", {
+                onChange: handleTransactionDataChange,
               })}
               rows={dryRunMutation.data ? 6 : 12}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
             />
             {form.formState.errors.transactionData && (
-              <p className="text-sm text-red-600">{form.formState.errors.transactionData.message}</p>
+              <p className="text-sm text-red-600">
+                {form.formState.errors.transactionData.message}
+              </p>
             )}
           </div>
 
           {/* Preview Results */}
           {(dryRunMutation.data || dryRunMutation.error) && (
-            <div className={`border rounded-lg p-4 ${
-              isDryRunSuccessful
-                ? 'border-green-200 bg-green-50'
-                : 'border-red-200 bg-red-50'
-            }`}>
+            <div
+              className={`border rounded-lg p-4 ${
+                isDryRunSuccessful
+                  ? "border-green-200 bg-white"
+                  : "border-red-200 bg-white"
+              }`}
+            >
               <div className="flex items-center gap-2 mb-3">
                 {isDryRunSuccessful ? (
                   <>
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    <h3 className="font-medium text-green-900">Transaction Preview - Success</h3>
+                    <h3 className="font-medium text-gray-900">
+                      Transaction Preview - Success
+                    </h3>
                   </>
                 ) : (
                   <>
                     <AlertCircle className="w-5 h-5 text-red-600" />
-                    <h3 className="font-medium text-red-900">Transaction Preview - Failed</h3>
+                    <h3 className="font-medium text-gray-900">
+                      Transaction Preview - Failed
+                    </h3>
                   </>
                 )}
               </div>
@@ -193,42 +222,76 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
                 <EffectsPreview output={dryRunMutation.data} />
               ) : (
                 <p className="text-sm text-red-600">
-                  {dryRunMutation.error?.message || 'Transaction would fail on-chain'}
+                  {dryRunMutation.error?.message ||
+                    "Transaction would fail on-chain"}
                 </p>
               )}
             </div>
           )}
 
+          {/* Proposal Creation Error */}
+          {createProposalMutation.error && (
+            <div className="border border-red-200 bg-white rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <h3 className="font-medium text-gray-900">
+                  Failed to Create Proposal
+                </h3>
+              </div>
+              <p className="text-sm text-red-600">
+                {createProposalMutation.error.message}
+              </p>
+            </div>
+          )}
+
+          {/* Description */}
+          <div className="space-y-2">
+            <label htmlFor="description" className="text-sm text-gray-600">
+              Description (optional)
+            </label>
+            <textarea
+              id="description"
+              placeholder="Optional description for this proposal..."
+              {...form.register("description")}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+            {form.formState.errors.description && (
+              <p className="text-sm text-red-600">
+                {form.formState.errors.description.message}
+              </p>
+            )}
+          </div>
+
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleClose(false)}
+            >
               Cancel
             </Button>
             {!dryRunMutation.data ? (
-              <Button
-                type="button"
-                disabled
-                variant="outline"
-              >
+              <Button type="button" disabled variant="outline">
                 Preview Required
               </Button>
             ) : isDryRunSuccessful ? (
               <Button
                 type="submit"
-                disabled={form.formState.isSubmitting}
+                disabled={createProposalMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {form.formState.isSubmitting ? 'Creating...' : 'Create Proposal'}
+                {createProposalMutation.isPending
+                  ? "Creating..."
+                  : "Create Proposal"}
               </Button>
             ) : (
-              <Button
-                type="button"
-                disabled
-                variant="destructive"
-              >
+              <Button type="button" disabled variant="destructive">
                 Fix Transaction Errors
               </Button>
-            )}</div>
+            )}
+          </div>
         </form>
       </SheetContent>
     </Sheet>

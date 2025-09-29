@@ -7,6 +7,7 @@ import {
   Multisig,
   CreateProposalRequest,
   Proposal,
+  ProposalWithSignatures,
   VoteProposalRequest,
   CancelProposalRequest,
   ProposalStatus,
@@ -122,21 +123,23 @@ class ApiClient {
     });
   }
 
-  async getProposals(params?: {
+  async getProposals(params: {
     multisigAddress?: string;
     status?: ProposalStatus;
-  }): Promise<Proposal[]> {
+    network: string;
+  }): Promise<ProposalWithSignatures[]> {
     const searchParams = new URLSearchParams();
-    if (params?.multisigAddress) {
+    if (params.multisigAddress) {
       searchParams.append('multisigAddress', params.multisigAddress);
     }
-    if (params?.status !== undefined) {
+    if (params.status !== undefined) {
       const statusString = ProposalStatus[params.status];
       searchParams.append('status', statusString);
     }
+    searchParams.append('network', params.network);
 
     const query = searchParams.toString();
-    return this.request<Proposal[]>(`/proposals${query ? `?${query}` : ''}`);
+    return this.request<ProposalWithSignatures[]>(`/proposals${query ? `?${query}` : ''}`);
   }
 
   async voteOnProposal(
