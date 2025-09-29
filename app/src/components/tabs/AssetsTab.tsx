@@ -7,6 +7,7 @@ import { CONFIG } from '../../lib/constants';
 
 interface AssetsTabContext {
   multisig: SimplifiedMultisig;
+  openProposalSheet: () => void;
 }
 
 export function AssetsTab() {

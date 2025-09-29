@@ -11,6 +11,7 @@ import { CONFIG } from '../../lib/constants';
 
 interface OverviewTabContext {
   multisig: SimplifiedMultisig;
+  openProposalSheet: () => void;
 }
 
 export function OverviewTab() {

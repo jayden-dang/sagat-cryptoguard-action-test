@@ -6,10 +6,11 @@ import { SimplifiedMultisig } from '../../types/multisig';
 
 interface ProposalsTabContext {
   multisig: SimplifiedMultisig;
+  openProposalSheet: () => void;
 }
 
 export function ProposalsTab() {
-  const { multisig } = useOutletContext<ProposalsTabContext>();
+  const { multisig, openProposalSheet } = useOutletContext<ProposalsTabContext>();
   const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'ready' | 'executed'>('all');
 
   const filters = [
@@ -62,10 +63,7 @@ export function ProposalsTab() {
           <p className="text-gray-500 mb-4">
             Create your first proposal to get started with this multisig.
           </p>
-          <Button onClick={() => {
-            // This would trigger the parent's proposal sheet
-            // We'll need to pass this function down from the parent
-          }}>
+          <Button onClick={openProposalSheet}>
             <Plus className="w-4 h-4 mr-2" />
             Create Proposal
           </Button>

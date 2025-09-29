@@ -179,7 +179,7 @@ export function MultisigDetailPage() {
 
       {/* Tab Content */}
       <div className="space-y-4">
-        <Outlet context={{ multisig }} />
+        <Outlet context={{ multisig, openProposalSheet: () => setShowProposalSheet(true) }} />
       </div>
 
       {/* Proposal Creation Sheet */}
