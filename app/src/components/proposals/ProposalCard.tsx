@@ -11,6 +11,7 @@ import { apiClient } from '../../lib/api';
 import { calculateCurrentWeight, getTotalWeight } from '../../lib/proposalUtils';
 import { QueryKeys } from '../../lib/queryKeys';
 import { useExecuteProposal } from '../../hooks/useExecuteProposal';
+import { useVerifyProposal } from '../../hooks/useVerifyProposal';
 
 interface ProposalCardProps {
   proposal: ProposalWithSignatures;
@@ -22,6 +23,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedDigest, setCopiedDigest] = useState(false);
   const executeProposalMutation = useExecuteProposal();
+  const verifyProposalMutation = useVerifyProposal();
 
   // Query to get full multisig details (including members with weights)
   const { data: multisigDetails } = useQuery({
@@ -43,10 +45,18 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
 
   const handleExecuteProposal = () => {
     if (!multisigDetails) return;
-    executeProposalMutation.mutate({
-      proposal,
-      multisigDetails
-    });
+    executeProposalMutation.mutate(
+      {
+        proposal,
+        multisigDetails
+      },
+      {
+        onError: (error) => {
+          // If execution fails, try to verify (it might have been executed by someone else)
+          verifyProposalMutation.mutate(proposal.id);
+        }
+      }
+    );
   };
 
   const handleCopyDigest = async () => {

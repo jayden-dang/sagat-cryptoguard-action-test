@@ -48,7 +48,6 @@ export function useExecuteProposal() {
         const combinedSignature = multiSigPublicKey.combinePartialSignatures(orderedSignatures);
 
         // Step 3: Execute the transaction with the combined signature
-        console.log('Executing transaction on-chain...');
         const result = await suiClient.executeTransactionBlock({
           transactionBlock: proposal.builtTransactionBytes,
           signature: combinedSignature,
@@ -58,16 +57,11 @@ export function useExecuteProposal() {
           },
         });
 
-        console.log('Transaction executed successfully:', result);
-
-        // Step 5: Call the verify endpoint to update proposal status in the backend
-        console.log('Verifying transaction with backend...');
+        // Step 4: Call the verify endpoint to update proposal status in the backend
         const verifyResponse = await apiClient.verifyProposal(proposal.id);
 
-        console.log('Verification successful:', verifyResponse);
         return { executionResult: result, verifyResponse };
       } catch (error) {
-        console.error('Execution failed:', error);
         throw error;
       }
     },
@@ -82,7 +76,6 @@ export function useExecuteProposal() {
       toast.success(`Transaction executed successfully! Digest: ${data.executionResult.digest}`);
     },
     onError: (error: Error) => {
-      console.error('Failed to execute proposal:', error);
       toast.error(`Failed to execute proposal: ${error.message}`);
     },
   });

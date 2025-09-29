@@ -6,6 +6,7 @@ import proposalsRouter from './routes/proposals';
 import authRouter from './routes/auth';
 import { SUPPORTED_NETWORKS } from './db/env';
 import { cors } from 'hono/cors';
+import { SuiHTTPTransportError } from '@mysten/sui/client';
 
 const app = new Hono();
 
@@ -36,6 +37,11 @@ app.onError((err, c) => {
   if (err instanceof ValidationError) {
     return c.json({ error: err.message }, 400);
   }
+
+  if (err instanceof SuiHTTPTransportError) {
+    return c.json({ error: err.message }, 400);
+  }
+
   console.error('Unhandled error:', err);
   return c.json({ error: 'Internal Server Error' }, 500);
 });
