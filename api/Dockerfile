@@ -16,9 +16,6 @@ RUN bun install --frozen-lockfile
 # Copy source code from api subdirectory
 COPY api/ .
 
-# Generate database schemas
-RUN bun run db:generate
-
 # Create non-root user
 RUN groupadd -g 1001 sagat && \
     useradd -r -u 1001 -g sagat sagat
