@@ -8,12 +8,12 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Install dependencies
-COPY package.json bun.lockb ./
+# Install dependencies - copy from api subdirectory
+COPY api/package.json api/bun.lockb ./
 RUN bun install --frozen-lockfile
 
-# Copy source code
-COPY . .
+# Copy source code from api subdirectory
+COPY api/ .
 
 # Generate database schemas
 RUN bun run db:generate

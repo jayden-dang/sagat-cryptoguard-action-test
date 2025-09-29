@@ -6,12 +6,12 @@ RUN apk add --no-cache curl
 
 WORKDIR /app
 
-# Install dependencies
-COPY package.json bun.lockb ./
+# Install dependencies - copy from app subdirectory
+COPY app/package.json app/bun.lockb ./
 RUN bun install --frozen-lockfile
 
-# Copy source code
-COPY . .
+# Copy source code from app subdirectory
+COPY app/ .
 
 # Development stage - don't build yet
 FROM base AS development
