@@ -1,10 +1,11 @@
 # Sagat API Backend
-FROM oven/bun:1.2.23-alpine AS base
+FROM oven/bun:1.2.23 AS base
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     postgresql-client \
-    curl
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -19,8 +20,8 @@ COPY api/ .
 RUN bun run db:generate
 
 # Create non-root user
-RUN addgroup -g 1001 -S sagat && \
-    adduser -S sagat -u 1001
+RUN groupadd -g 1001 sagat && \
+    useradd -r -u 1001 -g sagat sagat
 
 # Change ownership
 RUN chown -R sagat:sagat /app

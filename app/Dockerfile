@@ -1,8 +1,8 @@
 # Sagat Frontend
-FROM oven/bun:1.2.23-alpine AS base
+FROM oven/bun:1.2.23 AS base
 
 # Install system dependencies
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
