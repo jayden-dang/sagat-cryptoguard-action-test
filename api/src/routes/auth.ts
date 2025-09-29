@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { Context } from 'hono';
-import { connectToPublicKey, disconnect, authMiddleware, AuthEnv } from '../services/auth.service';
+import {
+  connectToPublicKey,
+  disconnect,
+  authMiddleware,
+  AuthEnv,
+} from '../services/auth.service';
 
 const authRouter = new Hono();
 
@@ -12,8 +17,8 @@ authRouter.get('/check', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
 
   // Convert public keys to addresses
-  const addresses = publicKeys.map(pk => pk.toSuiAddress());
-  const publicKeyStrings = publicKeys.map(pk => pk.toBase64());
+  const addresses = publicKeys.map((pk) => pk.toSuiAddress());
+  const publicKeyStrings = publicKeys.map((pk) => pk.toBase64());
 
   return c.json({
     authenticated: true,

@@ -3,9 +3,7 @@ import { SUI_RPC_URL } from '../db/env';
 
 export type SuiNetwork = 'mainnet' | 'testnet' | 'devnet' | 'localnet';
 
-export const getSuiClient = (
-  network: SuiNetwork,
-) => {
+export const getSuiClient = (network: SuiNetwork) => {
   return new SuiClient({ url: SUI_RPC_URL[network] });
 };
 

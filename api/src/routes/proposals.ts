@@ -182,38 +182,44 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 });
 
 // Verify the execution of a proposal.
-proposalsRouter.post('/:proposalId/verify', authMiddleware, async (c: Context<AuthEnv>) => {
-  const publicKeys = c.get('publicKeys');
-  const { proposalId } = c.req.param();
-  const proposal = await getProposalById(parseInt(proposalId));
+proposalsRouter.post(
+  '/:proposalId/verify',
+  authMiddleware,
+  async (c: Context<AuthEnv>) => {
+    const publicKeys = c.get('publicKeys');
+    const { proposalId } = c.req.param();
+    const proposal = await getProposalById(parseInt(proposalId));
 
-  if (!(await jwtHasMultisigMemberAccess(proposal.multisigAddress, publicKeys)))
-    throw new ValidationError('Not a member of the multisig');
+    if (
+      !(await jwtHasMultisigMemberAccess(proposal.multisigAddress, publicKeys))
+    )
+      throw new ValidationError('Not a member of the multisig');
 
-  if (proposal.status !== ProposalStatus.PENDING)
+    if (proposal.status !== ProposalStatus.PENDING)
+      return c.json({ verified: true });
+
+    const tx = await getSuiClient(
+      proposal.network as SuiNetwork,
+    ).getTransactionBlock({
+      digest: proposal.digest,
+      options: { showEffects: true },
+    });
+
+    if (!tx.checkpoint || !tx.effects)
+      throw new ValidationError('Transaction not found');
+
+    const isSuccess = tx.effects.status.status === 'success';
+
+    await db
+      .update(SchemaProposals)
+      .set({
+        status: isSuccess ? ProposalStatus.SUCCESS : ProposalStatus.FAILURE,
+      })
+      .where(eq(SchemaProposals.id, proposal.id));
+
     return c.json({ verified: true });
-
-  const tx = await getSuiClient(
-    proposal.network as SuiNetwork,
-  ).getTransactionBlock({
-    digest: proposal.digest,
-    options: { showEffects: true },
-  });
-
-  if (!tx.checkpoint || !tx.effects)
-    throw new ValidationError('Transaction not found');
-
-  const isSuccess = tx.effects.status.status === 'success';
-
-  await db
-    .update(SchemaProposals)
-    .set({
-      status: isSuccess ? ProposalStatus.SUCCESS : ProposalStatus.FAILURE,
-    })
-    .where(eq(SchemaProposals.id, proposal.id));
-
-  return c.json({ verified: true });
-});
+  },
+);
 
 proposalsRouter.get('/', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');

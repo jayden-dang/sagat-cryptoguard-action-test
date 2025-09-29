@@ -193,6 +193,12 @@ export const validateProposedTransaction = async (
     );
   }
 
+  if (proposedTransaction.getData().sender !== multisigAddress) {
+    throw new ValidationError(
+      'The transaction sender does not match the multisig address.',
+    );
+  }
+
   // Get all the owned or receiving objects from the pending proposals.
   // Make sure we do not have any of these in our proposal.
   const ownedOrReceivingObjects: string[] = [];

@@ -20,17 +20,21 @@ const addressesRouter = new Hono();
  */
 addressesRouter.post('/', authMiddleware, async (c: Context<AuthEnv>) => {
   const publicKeys = c.get('publicKeys');
-  const { extraPublicKeys } = await c.req.json().catch(() => ({ extraPublicKeys: [] }));
+  const { extraPublicKeys } = await c.req
+    .json()
+    .catch(() => ({ extraPublicKeys: [] }));
 
   // Parse extra public keys using the existing utility
-  const parsedExtraKeys = extraPublicKeys.map((keyStr: string) => {
-    try {
-      return parsePublicKey(keyStr);
-    } catch (error) {
-      console.warn('Failed to parse public key:', keyStr, error);
-      return null;
-    }
-  }).filter(Boolean);
+  const parsedExtraKeys = extraPublicKeys
+    .map((keyStr: string) => {
+      try {
+        return parsePublicKey(keyStr);
+      } catch (error) {
+        console.warn('Failed to parse public key:', keyStr, error);
+        return null;
+      }
+    })
+    .filter(Boolean);
 
   // Combine all public keys
   const allPublicKeys = [...publicKeys, ...parsedExtraKeys];
@@ -84,7 +88,9 @@ addressesRouter.get(
       .where(and(...whereConditions));
 
     // Get member counts for each unique multisig
-    const uniqueAddresses = Array.from(new Set(membersWithMultisig.map(m => m.multisigAddress)));
+    const uniqueAddresses = Array.from(
+      new Set(membersWithMultisig.map((m) => m.multisigAddress)),
+    );
     const memberCounts: Record<string, number> = {};
 
     for (const address of uniqueAddresses) {

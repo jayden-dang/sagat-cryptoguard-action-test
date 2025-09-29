@@ -71,6 +71,8 @@ const multisigMembers = pgTable(
       table.multisigAddress,
       table.publicKey,
     ),
+    index('multisig_member_multisig_address_idx').on(table.multisigAddress),
+    index('multisig_member_public_key_idx').on(table.publicKey),
   ],
 );
 
@@ -105,7 +107,10 @@ const proposals = pgTable(
     // the network of the proposal
     network: text('network').notNull(),
   },
-  (table) => [index('addr_network_idx').on(table.multisigAddress, table.network)],
+  (table) => [
+    index('proposals_addr_network_idx').on(table.multisigAddress, table.network),
+    index('proposals_multisig_address_idx').on(table.multisigAddress),
+  ],
 );
 
 // Store the signatures for a proposal.

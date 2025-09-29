@@ -28,19 +28,24 @@ export const validatePersonalMessage = async (
  * Registers a single public key in the addresses table
  */
 export async function registerPublicKey(publicKey: PublicKey): Promise<void> {
-  await db.insert(SchemaAddresses).values({
-    publicKey: publicKey.toBase64(),
-    address: publicKey.toSuiAddress(),
-  }).onConflictDoNothing();
+  await db
+    .insert(SchemaAddresses)
+    .values({
+      publicKey: publicKey.toBase64(),
+      address: publicKey.toSuiAddress(),
+    })
+    .onConflictDoNothing();
 }
 
 /**
  * Registers multiple public keys in the addresses table
  */
-export async function registerPublicKeys(publicKeys: PublicKey[]): Promise<void> {
+export async function registerPublicKeys(
+  publicKeys: PublicKey[],
+): Promise<void> {
   if (publicKeys.length === 0) return;
 
-  const addressData = publicKeys.map(pubKey => ({
+  const addressData = publicKeys.map((pubKey) => ({
     publicKey: pubKey.toBase64(),
     address: pubKey.toSuiAddress(),
   }));
@@ -51,9 +56,11 @@ export async function registerPublicKeys(publicKeys: PublicKey[]): Promise<void>
 /**
  * Registers public keys from base64 strings
  */
-export async function registerPublicKeyStrings(publicKeyStrings: string[]): Promise<void> {
+export async function registerPublicKeyStrings(
+  publicKeyStrings: string[],
+): Promise<void> {
   if (publicKeyStrings.length === 0) return;
 
-  const publicKeys = publicKeyStrings.map(keyStr => parsePublicKey(keyStr));
+  const publicKeys = publicKeyStrings.map((keyStr) => parsePublicKey(keyStr));
   await registerPublicKeys(publicKeys);
 }

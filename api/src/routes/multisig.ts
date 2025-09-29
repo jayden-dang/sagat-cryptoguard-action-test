@@ -20,6 +20,8 @@ import { ValidationError } from '../errors';
 import { authMiddleware, AuthEnv } from '../services/auth.service';
 import { Context } from 'hono';
 
+const MAX_MULTISIGS_PER_PUBLIC_KEY = 50;
+
 const multisigRouter = new Hono();
 
 // Get multisig details by address (authenticated)
@@ -150,6 +152,19 @@ multisigRouter.post('/:address/accept', async (c) => {
 
   if (!(await isMultisigMember(address, pubKey.toBase64(), false)))
     throw new ValidationError('You are not a member of this multisig');
+
+  const existingConnections = await db.query.SchemaMultisigMembers.findMany({
+    where: and(
+      eq(SchemaMultisigMembers.publicKey, pubKey.toBase64()),
+      eq(SchemaMultisigMembers.isAccepted, true),
+    ),
+  });
+
+  // Maximum connections per public key.
+  if (existingConnections.length > MAX_MULTISIGS_PER_PUBLIC_KEY)
+    throw new ValidationError(
+      'You have reached the maximum number of multisigs for this public key',
+    );
 
   const result = await db.transaction(async (tx) => {
     const msig = await tx.query.SchemaMultisigs.findFirst({
