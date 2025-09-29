@@ -6,13 +6,11 @@ import { FileText, Info, Coins, Plus, Copy, Check } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { ProposalSheet } from "./ProposalSheet";
 import { MultisigSelector } from "./MultisigSelector";
-import { useNetwork } from "../contexts/NetworkContext";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 
 export function MultisigDetailPage() {
   const { address, tab } = useParams<{ address: string; tab?: string }>();
   const navigate = useNavigate();
-  const { network } = useNetwork();
   const [showProposalSheet, setShowProposalSheet] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
@@ -121,8 +119,7 @@ export function MultisigDetailPage() {
                   className="whitespace-nowrap"
                   title="Copy multisig address"
                 >
-                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-                  Copy Address
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
                 <Button onClick={() => setShowProposalSheet(true)}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -139,16 +136,9 @@ export function MultisigDetailPage() {
               <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
                 {multisig.isVerified ? 'Verified' : 'Pending'}
               </span>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                network === "testnet"
-                  ? "bg-yellow-100 text-yellow-700"
-                  : "bg-blue-100 text-blue-700"
-              }`}>
-                {network}
-              </span>
               {multisig.pendingProposals > 0 && (
                 <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full">
-                  {multisig.pendingProposals} pending
+                  {multisig.pendingProposals} pending proposals
                 </span>
               )}
             </div>

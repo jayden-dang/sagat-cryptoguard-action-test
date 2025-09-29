@@ -11,6 +11,7 @@ import {
   CancelProposalRequest,
   ProposalStatus,
 } from './types';
+import { MultisigDetails } from '../types/multisig';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -88,8 +89,8 @@ class ApiClient {
     });
   }
 
-  async getMultisig(address: string): Promise<any> {
-    return this.request<any>(`/multisig/${address}`);
+  async getMultisig(address: string): Promise<MultisigDetails> {
+    return this.request<MultisigDetails>(`/multisig/${address}`);
   }
 
 

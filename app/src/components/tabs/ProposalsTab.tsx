@@ -53,7 +53,7 @@ export function ProposalsTab() {
 
       {/* Proposals Content */}
       <div className="space-y-4">
-        {/* Empty State for now - TODO: Replace with actual proposals list */}
+        {/* Empty State - Will be replaced with actual proposals list when API is integrated */}
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">

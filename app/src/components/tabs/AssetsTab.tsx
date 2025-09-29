@@ -3,6 +3,7 @@ import { Coins, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useNetwork } from '../../contexts/NetworkContext';
 import { SimplifiedMultisig } from '../../types/multisig';
+import { CONFIG } from '../../lib/constants';
 
 interface AssetsTabContext {
   multisig: SimplifiedMultisig;
@@ -13,9 +14,7 @@ export function AssetsTab() {
   const { network } = useNetwork();
 
   const getExplorerUrl = (address: string) => {
-    const baseUrl = network === "testnet"
-      ? "https://suiscan.xyz/testnet"
-      : "https://suiscan.xyz/mainnet";
+    const baseUrl = CONFIG.EXPLORER_URLS[network];
     return `${baseUrl}/account/${address}`;
   };
 

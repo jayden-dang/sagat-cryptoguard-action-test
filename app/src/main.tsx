@@ -9,15 +9,15 @@ import App from "./App.tsx";
 import { networkConfig } from "./networkConfig.ts";
 import { Toaster } from "sonner";
 import { ApiAuthProvider } from "./contexts/ApiAuthContext.tsx";
+import { CONFIG } from "./lib/constants";
 
 const queryClient = new QueryClient();
 
-// Get stored network or default to testnet
-const storedNetwork = (localStorage.getItem("suiNetwork") as "testnet" | "mainnet") || "testnet";
+// Get stored network or default to configured default
+const storedNetwork = (localStorage.getItem("suiNetwork") as "testnet" | "mainnet") || CONFIG.DEFAULT_NETWORK;
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {/* <Theme appearance="dark"> */}
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork={storedNetwork}>
         <WalletProvider autoConnect>
@@ -29,6 +29,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
 
     <Toaster />
-    {/* </Theme> */}
   </React.StrictMode>,
 );

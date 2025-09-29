@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { CONFIG } from "../lib/constants";
 
 export function useCopyToClipboard(successMessage = "Copied!") {
   const [copied, setCopied] = useState(false);
@@ -9,7 +10,7 @@ export function useCopyToClipboard(successMessage = "Copied!") {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       toast.success(successMessage);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), CONFIG.COPY_FEEDBACK_DURATION);
       return true;
     } catch (error) {
       console.error("Failed to copy:", error);

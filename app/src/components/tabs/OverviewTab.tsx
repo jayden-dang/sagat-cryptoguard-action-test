@@ -7,6 +7,7 @@ import { MembersList } from '../invitations/MembersList';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useNetwork } from '../../contexts/NetworkContext';
 import { SimplifiedMultisig } from '../../types/multisig';
+import { CONFIG } from '../../lib/constants';
 
 interface OverviewTabContext {
   multisig: SimplifiedMultisig;
@@ -18,9 +19,7 @@ export function OverviewTab() {
   const { network } = useNetwork();
 
   const getExplorerUrl = (address: string) => {
-    const baseUrl = network === "testnet"
-      ? "https://suiscan.xyz/testnet"
-      : "https://suiscan.xyz/mainnet";
+    const baseUrl = CONFIG.EXPLORER_URLS[network];
     return `${baseUrl}/account/${address}`;
   };
 
@@ -28,7 +27,7 @@ export function OverviewTab() {
   const { data: multisigDetails, isLoading, error, refetch } = useQuery({
     queryKey: ['multisig', multisig.address],
     queryFn: () => apiClient.getMultisig(multisig.address),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: CONFIG.STALE_TIME,
   });
 
   return (
