@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Eye } from "lucide-react";
+import { Users, Eye, Copy, Check } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -11,6 +11,7 @@ import {
 import { apiClient } from "../lib/api";
 import { MembersList } from "./invitations/MembersList";
 import { formatAddress } from "../lib/formatters";
+import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 
 interface SimplifiedMultisig {
   address: string;
@@ -30,6 +31,7 @@ export function MultisigDetails({ multisig }: MultisigDetailsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [multisigDetails, setMultisigDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { copied, copy } = useCopyToClipboard();
 
   const handleOpen = async () => {
     setIsOpen(true);
@@ -61,11 +63,22 @@ export function MultisigDetails({ multisig }: MultisigDetailsProps) {
       </Button>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="!w-[500px] sm:!w-[600px] !max-w-none">
+        <SheetContent className="!w-full sm:!w-[600px] !max-w-none px-4 sm:px-6">
           <SheetHeader>
             <SheetTitle>{multisig.name || 'Unnamed Multisig'}</SheetTitle>
             <SheetDescription>
-              {formatAddress(multisig.address)} • {multisig.threshold}/{multisig.totalMembers} threshold
+              <div className="flex items-center gap-2 flex-wrap">
+                <span>{formatAddress(multisig.address)}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copy(multisig.address)}
+                  className="h-6 px-2 text-xs"
+                >
+                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                </Button>
+                <span>• {multisig.threshold}/{multisig.totalMembers} threshold</span>
+              </div>
             </SheetDescription>
           </SheetHeader>
 

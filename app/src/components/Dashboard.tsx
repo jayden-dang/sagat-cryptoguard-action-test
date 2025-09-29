@@ -83,18 +83,20 @@ export function Dashboard({ multisigs }: DashboardProps) {
 
         {/* Multisig Selector Bar */}
         <div className="bg-white border rounded-lg p-4 mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             {/* Multisig Selector */}
-            <MultisigSelector
-              multisigs={verifiedMultisigs}
-              selectedMultisig={selectedMultisig}
-              onSelectMultisig={setSelectedMultisig}
-            />
+            <div className="flex-1 min-w-0">
+              <MultisigSelector
+                multisigs={verifiedMultisigs}
+                selectedMultisig={selectedMultisig}
+                onSelectMultisig={setSelectedMultisig}
+              />
+            </div>
 
             {/* Action Buttons */}
-            <div className="ml-4 flex items-center space-x-3 relative">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               {currentMultisig && <MultisigDetails multisig={currentMultisig} />}
-              <Button onClick={() => setShowProposalSheet(true)}>
+              <Button onClick={() => setShowProposalSheet(true)} className="whitespace-nowrap">
                 <Plus className="w-4 h-4 mr-2" />
                 New Proposal
               </Button>
@@ -103,29 +105,31 @@ export function Dashboard({ multisigs }: DashboardProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 border-b">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                  tab.color || 'bg-gray-100 text-gray-600'
-                } ${tab.color?.includes('orange') ? 'bg-orange-100' : ''} ${
-                  tab.color?.includes('green') ? 'bg-green-100' : ''
-                }`}>
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="overflow-x-auto border-b">
+          <div className="flex space-x-1 min-w-max">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                    tab.color || 'bg-gray-100 text-gray-600'
+                  } ${tab.color?.includes('orange') ? 'bg-orange-100' : ''} ${
+                    tab.color?.includes('green') ? 'bg-green-100' : ''
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -140,7 +144,7 @@ export function Dashboard({ multisigs }: DashboardProps) {
           <p className="text-gray-500 mb-4">
             Create your first proposal to get started with this multisig.
           </p>
-          <Button>
+          <Button onClick={() => setShowProposalSheet(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create Proposal
           </Button>

@@ -99,7 +99,7 @@ export function ProposalSheet({ open, onOpenChange, multisigAddress }: ProposalS
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent className="!w-[60vw] sm:!w-[70vw] !max-w-none px-8">
+      <SheetContent className="!w-full sm:!w-[70vw] !max-w-none px-4 sm:px-8">
         <SheetHeader>
           <div className="flex items-center justify-between">
             <div>
