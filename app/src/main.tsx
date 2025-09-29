@@ -9,7 +9,6 @@ import App from "./App.tsx";
 import { networkConfig } from "./networkConfig.ts";
 import { Toaster } from "sonner";
 import { ApiAuthProvider } from "./contexts/ApiAuthContext.tsx";
-import { NetworkProvider } from "./contexts/NetworkContext.tsx";
 
 const queryClient = new QueryClient();
 
@@ -20,15 +19,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     {/* <Theme appearance="dark"> */}
     <QueryClientProvider client={queryClient}>
-      <NetworkProvider>
-        <SuiClientProvider networks={networkConfig} defaultNetwork={storedNetwork}>
-          <WalletProvider autoConnect>
-            <ApiAuthProvider>
-              <App />
-            </ApiAuthProvider>
-          </WalletProvider>
-        </SuiClientProvider>
-      </NetworkProvider>
+      <SuiClientProvider networks={networkConfig} defaultNetwork={storedNetwork}>
+        <WalletProvider autoConnect>
+          <ApiAuthProvider>
+            <App />
+          </ApiAuthProvider>
+        </WalletProvider>
+      </SuiClientProvider>
     </QueryClientProvider>
 
     <Toaster />

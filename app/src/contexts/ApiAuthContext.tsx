@@ -114,14 +114,6 @@ export function ApiAuthProvider({ children }: { children: React.ReactNode }) {
     !!currentAddress &&
     (authData?.addresses?.includes(currentAddress) ?? false);
 
-  // // Handle wallet disconnect - clean up JWT when wallet fully disconnects
-  // useEffect(() => {
-  //   // If there's no wallet connected but we still have auth, disconnect from API
-  //   if (!currentAccount && authData?.authenticated && !disconnectMutation.isPending) {
-  //     disconnectMutation.mutate();
-  //   }
-  // }, [currentAccount, authData?.authenticated, disconnectMutation]);
-
   const value: ApiAuthContextType = {
     // Auth state
     isAuthenticated: authData?.authenticated ?? false,
