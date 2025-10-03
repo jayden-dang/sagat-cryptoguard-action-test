@@ -11,8 +11,12 @@ export interface AuthResponse {
 
 export interface AuthCheckResponse {
   authenticated: boolean;
-  publicKeys?: string[];
-  addresses?: string[];
+  addresses: Address[];
+}
+
+export interface Address {
+  address: string;
+  publicKey: string;
 }
 
 // Multisig types

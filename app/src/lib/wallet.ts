@@ -1,7 +1,8 @@
-import { PublicKey, SIGNATURE_SCHEME_TO_FLAG } from "@mysten/sui/cryptography";
+import { PublicKey, SIGNATURE_SCHEME_TO_FLAG, SIGNATURE_SCHEME_TO_SIZE } from "@mysten/sui/cryptography";
 import { Ed25519PublicKey } from "@mysten/sui/keypairs/ed25519";
 import { Secp256k1PublicKey } from "@mysten/sui/keypairs/secp256k1";
 import { Secp256r1PublicKey } from "@mysten/sui/keypairs/secp256r1";
+import { fromBase64 } from "@mysten/sui/utils";
 
 // Format the expiry time for the signature message
 export function getExpiryTime(): string {
@@ -15,93 +16,34 @@ export function createAuthMessage(expiry: string): string {
   return `Verifying address ownership until: ${expiry}`;
 }
 
-export function extractPublicKeyFromBase64(publicKey: string): PublicKey {
-  try {
-    return new Ed25519PublicKey(publicKey);
-  } catch (err) {}
-  try {
-    return new Secp256k1PublicKey(publicKey);
-  } catch (err) {}
-  try {
-    return new Secp256r1PublicKey(publicKey);
-  } catch (err) {}
-  throw new Error("Invalid public key");
-}
+export const extractPublicKeyFromBase64 = (publicKey: string): PublicKey => {
+  const bytes = fromBase64(publicKey);
 
-export function extractPublicKey(
-  publicKey: Uint8Array,
-  expectedAddress: string,
-): PublicKey {
-  const address = new Uint8Array(publicKey);
+  // if bytes length === 33, we only accept ed25519 ones.
+  if (bytes.length === SIGNATURE_SCHEME_TO_SIZE.ED25519 + 1) {
+    const flag = bytes[0];
+    const data = bytes.slice(1);
 
-  const flag = address[0];
-  const data = address.slice(1);
+    if (flag !== SIGNATURE_SCHEME_TO_FLAG.ED25519)
+      throw new Error(
+        'Public keys must have a sui flag. You can export them using `toSuiPublicKey()` instead of `toBase64()`.',
+      );
 
-  const hasFlag =
-    flag === SIGNATURE_SCHEME_TO_FLAG.ED25519 ||
-    flag === SIGNATURE_SCHEME_TO_FLAG.Secp256k1 ||
-    flag === SIGNATURE_SCHEME_TO_FLAG.Secp256r1 ||
-    flag === SIGNATURE_SCHEME_TO_FLAG.ZkLogin ||
-    flag === SIGNATURE_SCHEME_TO_FLAG.Passkey ||
-    flag === SIGNATURE_SCHEME_TO_FLAG.MultiSig;
-
-  const isSupportedFlag =
-    !hasFlag ||
-    (hasFlag &&
-      (flag === SIGNATURE_SCHEME_TO_FLAG.ED25519 ||
-        flag === SIGNATURE_SCHEME_TO_FLAG.Secp256k1 ||
-        flag === SIGNATURE_SCHEME_TO_FLAG.Secp256r1));
-
-  if (!publicKey || !isSupportedFlag || address.length === 0) {
-    throw new Error(
-      "The only supported public keys are Ed25519, Secp256k1, and Secp256r1. ZkLogin is not supported.",
-    );
+    return new Ed25519PublicKey(data);
   }
 
-  let pubKey: PublicKey = hasFlag
-    ? getPublicKeyWithFlag(data, flag)
-    : tryGetPublicKeyWithoutFlag(publicKey);
+  // For length === 34, we know it's either secp256k1, or secp256r1
+  if (bytes.length === SIGNATURE_SCHEME_TO_SIZE.Secp256k1 + 1) {
+    const flag = bytes[0];
+    const data = bytes.slice(1);
 
-  if (!pubKey) throw new Error("Invalid public key");
-
-  if (pubKey.toSuiAddress() !== expectedAddress)
-    throw new Error(
-      "There was an unknown missmatch between the public key and the expected address. Please disconnect and try again.",
-    );
-
-  return pubKey;
-}
-
-const getPublicKeyWithFlag = (publicKey: Uint8Array, flag: number) => {
-  switch (flag) {
-    case SIGNATURE_SCHEME_TO_FLAG.ED25519:
-      return new Ed25519PublicKey(publicKey);
-      break;
-    case SIGNATURE_SCHEME_TO_FLAG.Secp256k1:
-      return new Secp256k1PublicKey(publicKey);
-      break;
-    case SIGNATURE_SCHEME_TO_FLAG.Secp256r1:
-      return new Secp256r1PublicKey(publicKey);
-      break;
-    case SIGNATURE_SCHEME_TO_FLAG.ZkLogin:
-      throw new Error("ZkLogin public keys are not supported");
-    default:
-      throw new Error("Not supported public key type");
+    if (flag === SIGNATURE_SCHEME_TO_FLAG.Secp256k1)
+      return new Secp256k1PublicKey(data);
+    if (flag === SIGNATURE_SCHEME_TO_FLAG.Secp256r1)
+      return new Secp256r1PublicKey(data);
   }
-};
 
-const tryGetPublicKeyWithoutFlag = (publicKey: Uint8Array) => {
-  try {
-    return new Ed25519PublicKey(publicKey);
-  } catch (err) {}
-
-  try {
-    return new Secp256k1PublicKey(publicKey);
-  } catch (err) {}
-
-  try {
-    return new Secp256r1PublicKey(publicKey);
-  } catch (err) {}
-
-  throw new Error("Invalid public key");
+  throw new Error(
+    'Only ED25519, Secp256k1, and Secp256r1 are supported. Also, public keys must have a sui flag. You can export them using `toSuiPublicKey()` instead of `toBase64()`.',
+  );
 };

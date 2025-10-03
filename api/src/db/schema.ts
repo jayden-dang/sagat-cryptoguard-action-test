@@ -56,10 +56,12 @@ const multisigMembers = pgTable(
     multisigAddress: text('multisig_address')
       .notNull()
       .references(() => multisigs.address),
-    // The public key of the member
+    // The public key of the member. This is always a `sui` public key (includes flag!)
     publicKey: text('public_key')
       .notNull()
-      .references(() => addresses.publicKey),
+      .references(() => addresses.publicKey, {
+        onUpdate: 'cascade'
+      }),
     // The weight of the member
     weight: integer('weight').default(1).notNull(),
     // Whether the member has accepted the invitation
@@ -81,10 +83,15 @@ const multisigMembers = pgTable(
 );
 
 // Save a table of `pubKey -> address` to make lookups easier.
-const addresses = pgTable('addresses', {
-  publicKey: text('public_key').notNull().primaryKey(),
-  address: text('address').notNull().unique(),
-});
+const addresses = pgTable(
+  'addresses',
+  {
+    // The public key of the address. This is always a `sui` public key (includes flag!)
+    publicKey: text('public_key').notNull().primaryKey(),
+    address: text('address').notNull().unique(),
+  },
+  (table) => [uniqueIndex('addresses_address_idx').on(table.address)],
+);
 
 const proposals = pgTable(
   'proposals',
@@ -132,7 +139,9 @@ const proposalSignatures = pgTable(
       .references(() => proposals.id),
     publicKey: text('public_key')
       .notNull()
-      .references(() => addresses.publicKey),
+      .references(() => addresses.publicKey, {
+        onUpdate: 'cascade',
+      }),
     signature: text('signature').notNull(),
   },
   (table) => [primaryKey({ columns: [table.proposalId, table.publicKey] })],
