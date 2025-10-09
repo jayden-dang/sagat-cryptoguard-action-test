@@ -1,13 +1,19 @@
+import { type ProposalWithSignatures } from '@mysten/sagat';
 import { FileText, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
-import { type MultisigWithMembersForPublicKey } from '@/lib/types';
+import { calculateCurrentWeight } from '@/lib/proposalUtils';
+import {
+	type MultisigWithMembersForPublicKey,
+	type ProposalCardInput,
+} from '@/lib/types';
 
 import { useNetwork } from '../../contexts/NetworkContext';
 import { useProposalsQueries } from '../../hooks/useProposalsQueries';
 import { ProposalCard } from '../proposals/ProposalCard';
 import { Button } from '../ui/button';
+import { Label } from '../ui/label';
 
 interface ProposalsTabContext {
 	multisig: MultisigWithMembersForPublicKey;
@@ -85,6 +91,31 @@ export function ProposalsTab() {
 		);
 	}
 
+	const formatProposal = (
+		proposal: ProposalWithSignatures,
+	): ProposalCardInput => {
+		return {
+			...proposal,
+			isPublic: false,
+			totalWeight: multisig.threshold,
+			currentWeight: calculateCurrentWeight(
+				proposal,
+				multisig,
+			),
+			proposers: multisig.proposers.map(
+				(proposer) => proposer.address,
+			),
+			multisig: {
+				address: multisig.address,
+				threshold: multisig.threshold,
+				members: multisig.members.map((member) => ({
+					...member,
+					publicKey: member.publicKey,
+				})),
+			},
+		};
+	};
+
 	return (
 		<div className="h-full flex flex-col px-3">
 			<div>
@@ -109,15 +140,15 @@ export function ProposalsTab() {
 								{/* Only show count for pending state tabs */}
 								{filter.count !== undefined &&
 									filter.count > 0 && (
-										<span
-											className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-												isActive
-													? 'bg-blue-200 text-blue-800'
-													: 'bg-gray-200 text-gray-700'
-											}`}
+										<Label
+											variant={
+												isActive ? 'info' : 'neutral'
+											}
+											size="sm"
+											className="ml-2"
 										>
 											{filter.count}
-										</span>
+										</Label>
 									)}
 							</button>
 						);
@@ -149,7 +180,7 @@ export function ProposalsTab() {
 						{filteredProposals.map((proposal) => (
 							<ProposalCard
 								key={proposal.id}
-								proposal={proposal}
+								proposal={formatProposal(proposal)}
 							/>
 						))}
 					</div>

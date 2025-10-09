@@ -1,4 +1,5 @@
 import { AlertCircle, AlertTriangle } from 'lucide-react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -20,6 +21,15 @@ export function ProposalDetailPage() {
 
 	// Fetch proposal by digest
 	const proposalQuery = useGetProposal(digest);
+
+	const formattedProposal = useMemo(() => {
+		if (!proposalQuery.data) return null;
+		return {
+			...proposalQuery.data,
+			isPublic: true,
+			proposers: [],
+		};
+	}, [proposalQuery.data]);
 
 	// No digest in URL
 	if (!digest) {
@@ -60,8 +70,7 @@ export function ProposalDetailPage() {
 									: 'Failed to load proposal'}
 							</h3>
 							<p className="text-sm text-red-700">
-								Please check that you have access to this
-								proposal and that the digest is correct.
+								Please check that the digest is correct.
 							</p>
 						</div>
 					</div>
@@ -96,10 +105,12 @@ export function ProposalDetailPage() {
 				/>
 			)}
 			<div className="mt-8">
-				<ProposalCard
-					proposal={proposal!}
-					defaultExpanded={true}
-				/>
+				{formattedProposal && (
+					<ProposalCard
+						proposal={formattedProposal}
+						defaultExpanded={true}
+					/>
+				)}
 			</div>
 		</div>
 	);

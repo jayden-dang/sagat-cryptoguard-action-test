@@ -67,9 +67,10 @@ export function ApiAuthProvider({
 		queryKey: [...AUTH_QUERY_KEY, currentAccount?.address],
 		queryFn: () => apiClient.checkAuth(),
 		retry: false,
-		staleTime: 1000 * 60 * 5, // 5 minutes
 		// Always check when account changes
 		enabled: true,
+		// refetch on windows focus to make sure we sync across tabs.
+		refetchOnWindowFocus: true,
 	});
 
 	// Re-check auth when wallet account changes
