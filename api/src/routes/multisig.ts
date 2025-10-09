@@ -19,6 +19,7 @@ import {
 	CommonError,
 	ValidationError,
 } from '../errors';
+import { multisigTransactions, multisigSignatures } from '../metrics';
 import {
 	registerPublicKeyStrings,
 	validatePersonalMessage,

@@ -4,6 +4,7 @@ import {
 } from '@mysten/sui/client';
 
 import { SUI_RPC_URL } from '../db/env';
+import { rpcRequestDuration, rpcRequestErrors } from '../metrics';
 
 export type SuiNetwork =
 	| 'mainnet'
@@ -11,8 +12,58 @@ export type SuiNetwork =
 	| 'devnet'
 	| 'localnet';
 
+// Wrap SuiClient to add metrics
+class MetricsSuiClient extends SuiClient {
+	private network: SuiNetwork;
+
+	constructor(network: SuiNetwork, url: string) {
+		super({ url });
+		this.network = network;
+	}
+
+	private async wrapWithMetrics<T>(
+		method: string,
+		fn: () => Promise<T>,
+	): Promise<T> {
+		const start = Date.now();
+		try {
+			const result = await fn();
+			const duration = (Date.now() - start) / 1000;
+			rpcRequestDuration.observe(
+				{ network: this.network, method },
+				duration,
+			);
+			return result;
+		} catch (error) {
+			const duration = (Date.now() - start) / 1000;
+			rpcRequestDuration.observe(
+				{ network: this.network, method },
+				duration,
+			);
+			rpcRequestErrors.inc({
+				network: this.network,
+				method,
+				error_type: error instanceof Error ? error.name : 'unknown',
+			});
+			throw error;
+		}
+	}
+
+	override async multiGetObjects(...args: Parameters<SuiClient['multiGetObjects']>) {
+		return this.wrapWithMetrics('multiGetObjects', () =>
+			super.multiGetObjects(...args),
+		);
+	}
+
+	override async getTransactionBlock(...args: Parameters<SuiClient['getTransactionBlock']>) {
+		return this.wrapWithMetrics('getTransactionBlock', () =>
+			super.getTransactionBlock(...args),
+		);
+	}
+}
+
 export const getSuiClient = (network: SuiNetwork) => {
-	return new SuiClient({ url: SUI_RPC_URL[network] });
+	return new MetricsSuiClient(network, SUI_RPC_URL[network]);
 };
 
 // Query a list of objects

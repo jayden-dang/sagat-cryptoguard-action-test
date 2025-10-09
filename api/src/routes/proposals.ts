@@ -22,6 +22,7 @@ import {
 	ValidationError,
 } from '../errors';
 import { ProposalByDigestLoader } from '../loaders/proposals.loader';
+import { multisigTransactions, multisigSignatures } from '../metrics';
 import { validatePersonalMessage } from '../services/addresses.service';
 import {
 	AuthEnv,
@@ -122,10 +123,13 @@ proposalsRouter.post('/', async (c) => {
 				publicKey: pubKey.toSuiPublicKey(),
 				signature,
 			});
+			multisigSignatures.inc({ network });
 		}
 
 		return proposal[0];
 	});
+
+	multisigTransactions.inc({ network, status: 'pending' });
 
 	return c.json(proposal, 201);
 });
@@ -186,6 +190,8 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
 		.values(signatureObject);
 	proposal.signatures.push(signatureObject);
 
+	multisigSignatures.inc({ network: proposal.network });
+
 	const multisig = await getMultisig(
 		proposal.multisigAddress,
 	);
@@ -240,6 +246,8 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 		.set({ status: ProposalStatus.CANCELLED })
 		.where(eq(SchemaProposals.id, proposal.id));
 
+	multisigTransactions.inc({ network: proposal.network, status: 'cancelled' });
+
 	return c.json({
 		message: 'Proposal cancelled successfully',
 	});
@@ -288,6 +296,11 @@ proposalsRouter.post(
 					: ProposalStatus.FAILURE,
 			})
 			.where(eq(SchemaProposals.id, proposal.id));
+
+		multisigTransactions.inc({
+			network: proposal.network,
+			status: isSuccess ? 'success' : 'failure'
+		});
 
 		return c.json({ verified: true });
 	},

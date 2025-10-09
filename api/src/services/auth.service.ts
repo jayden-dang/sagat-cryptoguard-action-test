@@ -11,6 +11,7 @@ import { jwtVerify, SignJWT } from 'jose';
 import { LIMITS } from '../constants/limits';
 import { JWT_SECRET } from '../db/env';
 import { ValidationError } from '../errors';
+import { authAttempts, activeJwtTokens } from '../metrics';
 import {
 	getPublicKeyFromSerializedSignature,
 	parsePublicKey,
@@ -57,21 +58,29 @@ export type AuthEnv = {
 // public key data.
 // Script tokens are short-lived (1hr), matching the maximum duration of a signature.
 export const connectForScript = async (c: Context) => {
-	const { signature, expiry } = await c.req.json();
-	validateExpiry(expiry);
+	try {
+		const { signature, expiry } = await c.req.json();
+		validateExpiry(expiry);
 
-	const pubKey =
-		getPublicKeyFromSerializedSignature(signature);
+		const pubKey =
+			getPublicKeyFromSerializedSignature(signature);
 
-	await validatePersonalMessage(
-		pubKey,
-		signature,
-		PersonalMessages.connect(expiry),
-	);
+		await validatePersonalMessage(
+			pubKey,
+			signature,
+			PersonalMessages.connect(expiry),
+		);
 
-	const jwt = await issueJwt([pubKey], 'script');
+		const jwt = await issueJwt([pubKey], 'script');
 
-	return c.json({ token: jwt });
+		authAttempts.inc({ status: 'success' });
+		activeJwtTokens.inc();
+
+		return c.json({ token: jwt });
+	} catch (error) {
+		authAttempts.inc({ status: 'failed' });
+		throw error;
+	}
 };
 
 // We connect to the system incrementally with each public key we verify.
@@ -153,8 +162,12 @@ export const connectToPublicKey = async (c: Context) => {
 		// Automatically register all addresses for the connected public keys
 		await registerPublicKeys(pubKeys);
 
+		authAttempts.inc({ status: 'success' });
+		activeJwtTokens.inc();
+
 		return c.json({ success: true });
 	} catch (error) {
+		authAttempts.inc({ status: 'failed' });
 		return c.json({ error: 'Authentication failed' }, 500);
 	}
 };
@@ -248,5 +261,6 @@ export const disconnect = async (c: Context) => {
 		httpOnly: true,
 		sameSite: 'Lax', // Match the cookie setting
 	});
+	activeJwtTokens.dec();
 	return c.json({ success: true });
 };
