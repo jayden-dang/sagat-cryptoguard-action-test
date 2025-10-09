@@ -1,7 +1,14 @@
 import { Context, Next } from 'hono';
-import { httpRequestDuration, httpRequestTotal } from '../metrics';
 
-export const metricsMiddleware = async (c: Context, next: Next) => {
+import {
+	httpRequestDuration,
+	httpRequestTotal,
+} from '../metrics';
+
+export const metricsMiddleware = async (
+	c: Context,
+	next: Next,
+) => {
 	const start = Date.now();
 	const method = c.req.method;
 	const path = c.req.path;
