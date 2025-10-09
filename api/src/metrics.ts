@@ -44,10 +44,22 @@ export const activeJwtTokens = new Gauge({
 // Multisig Transaction Metrics
 // We use counters for all events and derive state using PromQL
 // This avoids expensive database queries while maintaining real-time accuracy
+
+export const MultisigEventType = {
+	PROPOSAL_CREATED: 'proposal_created',
+	SIGNATURE_ADDED: 'signature_added',
+	PROPOSAL_CANCELLED: 'proposal_cancelled',
+	PROPOSAL_SUCCESS: 'proposal_success',
+	PROPOSAL_FAILURE: 'proposal_failure',
+} as const;
+
+export type MultisigEventType =
+	(typeof MultisigEventType)[keyof typeof MultisigEventType];
+
 export const multisigProposalEvents = new Counter({
 	name: 'multisig_proposal_events_total',
 	help: 'Total number of multisig proposal events (derive state with PromQL)',
-	labelNames: ['network', 'event_type'],
+	labelNames: ['network', 'event_type'] as const,
 	registers: [register],
 });
 

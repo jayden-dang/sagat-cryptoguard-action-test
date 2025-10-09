@@ -91,6 +91,8 @@ export const connectToPublicKey = async (c: Context) => {
 		const cookie = getCookie(c, JWT_COOKIE_NAME);
 
 		const pubKeys: PublicKey[] = [];
+		let isNewToken = false;
+
 		// If user is already logged in, we check the payload we have.
 		// If it's valid, we append to the list of pub keys.
 		// Otherwise, we just generate a JWT with the new public key.
@@ -103,7 +105,11 @@ export const connectToPublicKey = async (c: Context) => {
 				pubKeys.push(...(publicKeys || []));
 			} catch (err) {
 				// JWT is invalid or expired, start fresh
+				isNewToken = true;
 			}
+		} else {
+			// No existing cookie, this is a new token
+			isNewToken = true;
 		}
 
 		// Only allow up to 10 pub keys per JWT, to control querying depth.
@@ -163,7 +169,11 @@ export const connectToPublicKey = async (c: Context) => {
 		await registerPublicKeys(pubKeys);
 
 		authAttempts.inc({ status: 'success' });
-		activeJwtTokens.inc();
+
+		// Only increment token count if this is a new token
+		if (isNewToken) {
+			activeJwtTokens.inc();
+		}
 
 		return c.json({ success: true });
 	} catch (error) {

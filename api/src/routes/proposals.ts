@@ -22,7 +22,10 @@ import {
 	ValidationError,
 } from '../errors';
 import { ProposalByDigestLoader } from '../loaders/proposals.loader';
-import { multisigProposalEvents } from '../metrics';
+import {
+	MultisigEventType,
+	multisigProposalEvents,
+} from '../metrics';
 import { validatePersonalMessage } from '../services/addresses.service';
 import {
 	AuthEnv,
@@ -125,7 +128,7 @@ proposalsRouter.post('/', async (c) => {
 			});
 			multisigProposalEvents.inc({
 				network,
-				event_type: 'signature_added',
+				event_type: MultisigEventType.SIGNATURE_ADDED,
 			});
 		}
 
@@ -134,7 +137,7 @@ proposalsRouter.post('/', async (c) => {
 
 	multisigProposalEvents.inc({
 		network,
-		event_type: 'proposal_created',
+		event_type: MultisigEventType.PROPOSAL_CREATED,
 	});
 
 	return c.json(proposal, 201);
@@ -198,7 +201,7 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
 
 	multisigProposalEvents.inc({
 		network: proposal.network,
-		event_type: 'signature_added',
+		event_type: MultisigEventType.SIGNATURE_ADDED,
 	});
 
 	const multisig = await getMultisig(
@@ -257,7 +260,7 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 
 	multisigProposalEvents.inc({
 		network: proposal.network,
-		event_type: 'proposal_cancelled',
+		event_type: MultisigEventType.PROPOSAL_CANCELLED,
 	});
 
 	return c.json({
@@ -312,8 +315,8 @@ proposalsRouter.post(
 		multisigProposalEvents.inc({
 			network: proposal.network,
 			event_type: isSuccess
-				? 'proposal_success'
-				: 'proposal_failure',
+				? MultisigEventType.PROPOSAL_SUCCESS
+				: MultisigEventType.PROPOSAL_FAILURE,
 		});
 
 		return c.json({ verified: true });
