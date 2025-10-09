@@ -25,6 +25,10 @@ import {
 	ValidationError,
 } from '../errors';
 import { ProposalByDigestLoader } from '../loaders/proposals.loader';
+import {
+	MultisigEventType,
+	multisigProposalEvents,
+} from '../metrics';
 import { validatePersonalMessage } from '../services/addresses.service';
 import {
 	AuthEnv,
@@ -126,9 +130,18 @@ proposalsRouter.post('/', async (c) => {
 				publicKey: pubKey.toSuiPublicKey(),
 				signature,
 			});
+			multisigProposalEvents.inc({
+				network,
+				event_type: MultisigEventType.SIGNATURE_ADDED,
+			});
 		}
 
 		return proposal[0];
+	});
+
+	multisigProposalEvents.inc({
+		network,
+		event_type: MultisigEventType.PROPOSAL_CREATED,
 	});
 
 	return c.json(proposal, 201);
@@ -190,6 +203,11 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
 		.values(signatureObject);
 	proposal.signatures.push(signatureObject);
 
+	multisigProposalEvents.inc({
+		network: proposal.network,
+		event_type: MultisigEventType.SIGNATURE_ADDED,
+	});
+
 	const multisig = await getMultisig(
 		proposal.multisigAddress,
 	);
@@ -243,6 +261,11 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 		.update(SchemaProposals)
 		.set({ status: ProposalStatus.CANCELLED })
 		.where(eq(SchemaProposals.id, proposal.id));
+
+	multisigProposalEvents.inc({
+		network: proposal.network,
+		event_type: MultisigEventType.PROPOSAL_CANCELLED,
+	});
 
 	return c.json({
 		message: 'Proposal cancelled successfully',

@@ -8,6 +8,10 @@ import {
 	SchemaProposalSignatures,
 } from '../db/schema';
 import { ValidationError } from '../errors';
+import {
+	MultisigEventType,
+	multisigProposalEvents,
+} from '../metrics';
 import { getSuiClient, SuiNetwork } from '../utils/client';
 import {
 	paginateResponse,
@@ -165,6 +169,13 @@ export const lookupAndVerifyProposal = async (
 				: ProposalStatus.FAILURE,
 		})
 		.where(eq(SchemaProposals.id, proposal.id));
+
+	multisigProposalEvents.inc({
+		network: proposal.network,
+		event_type: isSuccess
+			? MultisigEventType.PROPOSAL_SUCCESS
+			: MultisigEventType.PROPOSAL_FAILURE,
+	});
 
 	return { verified: true };
 };
