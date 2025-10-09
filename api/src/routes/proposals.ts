@@ -22,7 +22,7 @@ import {
 	ValidationError,
 } from '../errors';
 import { ProposalByDigestLoader } from '../loaders/proposals.loader';
-import { multisigProposalEvents, updateMultisigMetrics } from '../metrics';
+import { multisigProposalEvents } from '../metrics';
 import { validatePersonalMessage } from '../services/addresses.service';
 import {
 	AuthEnv,
@@ -131,9 +131,6 @@ proposalsRouter.post('/', async (c) => {
 
 	multisigProposalEvents.inc({ network, event_type: 'proposal_created' });
 
-	// Update gauge metrics to reflect new state
-	updateMultisigMetrics();
-
 	return c.json(proposal, 201);
 });
 
@@ -195,9 +192,6 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
 
 	multisigProposalEvents.inc({ network: proposal.network, event_type: 'signature_added' });
 
-	// Update gauge metrics to reflect new signature
-	updateMultisigMetrics();
-
 	const multisig = await getMultisig(
 		proposal.multisigAddress,
 	);
@@ -254,9 +248,6 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 
 	multisigProposalEvents.inc({ network: proposal.network, event_type: 'proposal_cancelled' });
 
-	// Update gauge metrics to reflect cancelled state
-	updateMultisigMetrics();
-
 	return c.json({
 		message: 'Proposal cancelled successfully',
 	});
@@ -310,9 +301,6 @@ proposalsRouter.post(
 			network: proposal.network,
 			event_type: isSuccess ? 'proposal_success' : 'proposal_failure'
 		});
-
-		// Update gauge metrics to reflect success/failure state
-		updateMultisigMetrics();
 
 		return c.json({ verified: true });
 	},

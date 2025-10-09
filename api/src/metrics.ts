@@ -41,28 +41,25 @@ export const activeJwtTokens = new Gauge({
 	registers: [register],
 });
 
-// Multisig Transaction Metrics (Gauges tracking DB state)
-export const multisigProposalsByStatus = new Gauge({
-	name: 'multisig_proposals_by_status',
-	help: 'Current number of multisig proposals by network and status',
-	labelNames: ['network', 'status'],
-	registers: [register],
-});
-
-export const multisigTotalSignatures = new Gauge({
-	name: 'multisig_signatures',
-	help: 'Current total number of signatures on multisig proposals by network',
-	labelNames: ['network'],
-	registers: [register],
-});
-
-// Counter for events (still useful for rate tracking)
+// Multisig Transaction Metrics
+// We use counters for all events and derive state using PromQL
+// This avoids expensive database queries while maintaining real-time accuracy
 export const multisigProposalEvents = new Counter({
 	name: 'multisig_proposal_events_total',
-	help: 'Total number of multisig proposal events',
+	help: 'Total number of multisig proposal events (derive state with PromQL)',
 	labelNames: ['network', 'event_type'],
 	registers: [register],
 });
+
+// Example PromQL queries to derive state from events:
+// - Pending: multisig_proposal_events_total{event_type="proposal_created"}
+//           - multisig_proposal_events_total{event_type="proposal_cancelled"}
+//           - multisig_proposal_events_total{event_type="proposal_success"}
+//           - multisig_proposal_events_total{event_type="proposal_failure"}
+// - Cancelled: multisig_proposal_events_total{event_type="proposal_cancelled"}
+// - Success: multisig_proposal_events_total{event_type="proposal_success"}
+// - Failed: multisig_proposal_events_total{event_type="proposal_failure"}
+// - Signatures: multisig_proposal_events_total{event_type="signature_added"}
 
 // Database Metrics
 export const dbQueryDuration = new Histogram({
@@ -101,78 +98,6 @@ export const rpcRequestErrors = new Counter({
 	registers: [register],
 });
 
-// Debounced metrics update - prevents database overload
-let metricsUpdatePending = false;
-let metricsUpdateTimer: NodeJS.Timeout | null = null;
-
-async function _updateMultisigMetricsNow() {
-	try {
-		const { db } = await import('./db');
-		const { SchemaProposals, SchemaProposalSignatures, ProposalStatus } = await import('./db/schema');
-		const { sql } = await import('drizzle-orm');
-
-		// Use efficient aggregate queries with indexes
-		const proposalCounts = await db
-			.select({
-				network: SchemaProposals.network,
-				status: SchemaProposals.status,
-				count: sql<number>`count(*)::int`,
-			})
-			.from(SchemaProposals)
-			.groupBy(SchemaProposals.network, SchemaProposals.status);
-
-		// Reset all gauges
-		multisigProposalsByStatus.reset();
-
-		// Update gauges with current counts
-		for (const row of proposalCounts) {
-			const statusName = Object.keys(ProposalStatus).find(
-				key => ProposalStatus[key as keyof typeof ProposalStatus] === row.status
-			) || 'unknown';
-
-			multisigProposalsByStatus.set(
-				{ network: row.network, status: statusName.toLowerCase() },
-				row.count
-			);
-		}
-
-		// Signature counts by network
-		const signatureCounts = await db
-			.select({
-				network: SchemaProposals.network,
-				count: sql<number>`count(${SchemaProposalSignatures.signature})::int`,
-			})
-			.from(SchemaProposalSignatures)
-			.innerJoin(SchemaProposals, sql`${SchemaProposalSignatures.proposalId} = ${SchemaProposals.id}`)
-			.groupBy(SchemaProposals.network);
-
-		multisigTotalSignatures.reset();
-		for (const row of signatureCounts) {
-			multisigTotalSignatures.set({ network: row.network }, row.count);
-		}
-	} catch (error) {
-		console.error('Failed to update multisig metrics:', error);
-	} finally {
-		metricsUpdatePending = false;
-	}
-}
-
-// Debounced update - waits 5 seconds after last call before executing
-// This batches rapid sequential updates into a single DB query
-export function updateMultisigMetrics() {
-	// Clear existing timer if any
-	if (metricsUpdateTimer) {
-		clearTimeout(metricsUpdateTimer);
-	}
-
-	// Set new timer - will execute 5 seconds after last call
-	metricsUpdateTimer = setTimeout(() => {
-		if (!metricsUpdatePending) {
-			metricsUpdatePending = true;
-			_updateMultisigMetricsNow();
-		}
-	}, 5000); // 5 second debounce
-}
-
-// Initialize metrics on startup
-_updateMultisigMetricsNow();
+// No database polling needed!
+// All multisig state is derived from event counters using PromQL
+// This is real-time, accurate, and has zero database overhead
