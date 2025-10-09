@@ -8,13 +8,16 @@ import {
 	SchemaProposalSignatures,
 } from '../db/schema';
 import { ValidationError } from '../errors';
+import {
+	MultisigEventType,
+	multisigProposalEvents,
+} from '../metrics';
 import { getSuiClient, SuiNetwork } from '../utils/client';
 import {
 	paginateResponse,
 	PaginationCursor,
 } from '../utils/pagination';
 import { getMultisig } from './multisig.service';
-import { MultisigEventType, multisigProposalEvents } from '../metrics';
 
 // Get a proposal by id, and its signatures.
 export const getProposalById = async (
@@ -167,12 +170,12 @@ export const lookupAndVerifyProposal = async (
 		})
 		.where(eq(SchemaProposals.id, proposal.id));
 
-		multisigProposalEvents.inc({
-			network: proposal.network,
-			event_type: isSuccess
-				? MultisigEventType.PROPOSAL_SUCCESS
-				: MultisigEventType.PROPOSAL_FAILURE,
-		});
+	multisigProposalEvents.inc({
+		network: proposal.network,
+		event_type: isSuccess
+			? MultisigEventType.PROPOSAL_SUCCESS
+			: MultisigEventType.PROPOSAL_FAILURE,
+	});
 
 	return { verified: true };
 };

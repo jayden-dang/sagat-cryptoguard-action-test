@@ -308,20 +308,9 @@ proposalsRouter.post(
 
 		if (!proposal) throw new NotFoundError();
 
-<<<<<<< HEAD
-		multisigProposalEvents.inc({
-			network: proposal.network,
-			event_type: isSuccess
-				? MultisigEventType.PROPOSAL_SUCCESS
-				: MultisigEventType.PROPOSAL_FAILURE,
-		});
-
-		return c.json({ verified: true });
-=======
 		const result = await lookupAndVerifyProposal(proposal);
 
 		return c.json(result);
->>>>>>> main
 	},
 );
 

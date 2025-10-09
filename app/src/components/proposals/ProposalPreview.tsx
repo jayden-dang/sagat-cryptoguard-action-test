@@ -1,7 +1,10 @@
-import { CheckCircle, X } from 'lucide-react';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { formatAddress } from '@mysten/sui/utils';
+import { CheckCircle, Clock, X } from 'lucide-react';
 import { useEffect } from 'react';
 
 import { type ProposalCardInput } from '@/lib/types';
+import { extractPublicKeyFromBase64 } from '@/lib/wallet';
 
 import { useDryRun } from '../../hooks/useDryRun';
 import { useSignProposal } from '../../hooks/useSignProposal';
@@ -23,6 +26,14 @@ export function ProposalPreview({
 }: ProposalPreviewProps) {
 	const dryRunMutation = useDryRun();
 	const signProposalMutation = useSignProposal();
+	const currentWallet = useCurrentAccount();
+
+	const isMember = proposal.multisig.members.some(
+		(member) =>
+			extractPublicKeyFromBase64(
+				member.publicKey,
+			).toSuiAddress() === currentWallet?.address,
+	);
 
 	// Automatically run dry run when component mounts
 	useEffect(() => {
@@ -61,7 +72,7 @@ export function ProposalPreview({
 									<CheckCircle className="w-4 h-4" />
 									Already Signed
 								</div>
-							) : (
+							) : isMember ? (
 								<Button
 									size="sm"
 									onClick={handleSignProposal}
@@ -72,6 +83,13 @@ export function ProposalPreview({
 										? 'Signing...'
 										: 'Sign Proposal'}
 								</Button>
+							) : (
+								<div className="flex items-center gap-1 text-sm text-gray-600">
+									<Clock className="w-4 h-4" />
+									Cannot sign:{' '}
+									{formatAddress(currentWallet?.address || '')} is
+									not a member of the multisig
+								</div>
 							)}
 						</>
 					)}

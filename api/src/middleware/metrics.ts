@@ -1,4 +1,5 @@
 import { Context, Next } from 'hono';
+import { routePath } from 'hono/route';
 
 import {
 	httpRequestDuration,
@@ -11,7 +12,7 @@ export const metricsMiddleware = async (
 ) => {
 	const start = Date.now();
 	const method = c.req.method;
-	const path = c.req.path;
+	const path = routePath(c, -1);
 
 	await next();
 
