@@ -1,3 +1,4 @@
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import {
 	ProposalStatus,
 	type ProposalWithSignatures,
@@ -17,18 +18,14 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-import { useApiAuth } from '@/contexts/ApiAuthContext';
-import { useGetMultisig } from '@/hooks/useGetMultisig';
+import { type ProposalCardInput } from '@/lib/types';
+import { extractPublicKeyFromBase64 } from '@/lib/wallet';
 
 import { useNetwork } from '../../contexts/NetworkContext';
 import { useCancelProposal } from '../../hooks/useCancelProposal';
 import { useExecuteProposal } from '../../hooks/useExecuteProposal';
 import { useSignProposal } from '../../hooks/useSignProposal';
 import { useVerifyProposal } from '../../hooks/useVerifyProposal';
-import {
-	calculateCurrentWeight,
-	getTotalWeight,
-} from '../../lib/proposalUtils';
 import { validatePublicKey } from '../../lib/sui-utils';
 import { CancelProposalModal } from '../modals/CancelProposalModal';
 import { Button } from '../ui/button';
@@ -36,7 +33,7 @@ import { CopyButton } from '../ui/copy-button';
 import { ProposalPreview } from './ProposalPreview';
 
 interface ProposalCardProps {
-	proposal: ProposalWithSignatures;
+	proposal: ProposalCardInput;
 	defaultExpanded?: boolean;
 }
 
@@ -46,6 +43,7 @@ export function ProposalCard({
 }: ProposalCardProps) {
 	const { network } = useNetwork();
 	const isNetworkMismatch = proposal.network !== network;
+
 	const [isExpanded, setIsExpanded] =
 		useState(defaultExpanded);
 	const [showCancelModal, setShowCancelModal] =
@@ -55,37 +53,23 @@ export function ProposalCard({
 	const cancelProposalMutation = useCancelProposal();
 	const signProposalMutation = useSignProposal();
 
-	const { data: multisigDetails } = useGetMultisig(
-		proposal.multisigAddress,
-	);
-
 	// Check if current user has already signed this proposal
 	// Check if the proposal is ready to execute
 	const isReadyToExecute = () => {
-		if (
-			!multisigDetails ||
-			proposal.status !== ProposalStatus.PENDING
-		)
+		if (proposal.status !== ProposalStatus.PENDING)
 			return false;
-		const currentWeight = calculateCurrentWeight(
-			proposal,
-			multisigDetails,
-		);
-		const threshold = getTotalWeight(multisigDetails);
-		return currentWeight >= threshold;
+		return proposal.currentWeight >= proposal.totalWeight;
 	};
 
 	const handleExecuteProposal = () => {
-		if (!multisigDetails) return;
 		executeProposalMutation.mutate(
 			{
 				proposal,
-				multisigDetails,
 			},
 			{
 				onError: () => {
 					// If execution fails, try to verify (it might have been executed by someone else)
-					verifyProposalMutation.mutate(proposal.id);
+					verifyProposalMutation.mutate(proposal.digest);
 				},
 			},
 		);
@@ -99,12 +83,15 @@ export function ProposalCard({
 		});
 	};
 
-	const { currentAddress } = useApiAuth();
+	const currentWallet = useCurrentAccount();
 
 	const userHasSigned = () => {
-		if (!currentAddress) return false;
+		if (!currentWallet) return false;
 		return proposal.signatures.some(
-			(sig) => sig.publicKey === currentAddress.publicKey,
+			(sig) =>
+				extractPublicKeyFromBase64(
+					sig.publicKey,
+				).toSuiAddress() === currentWallet?.address,
 		);
 	};
 
@@ -140,13 +127,7 @@ export function ProposalCard({
 			);
 		}
 
-		// Pending - check if ready to execute using the proper helpers
-		const currentWeight = calculateCurrentWeight(
-			proposal,
-			multisigDetails,
-		);
-		const totalWeight = getTotalWeight(multisigDetails);
-		if (currentWeight >= totalWeight) {
+		if (proposal.currentWeight >= proposal.totalWeight) {
 			return (
 				<span className="px-2 py-1 text-xs rounded-full shrink-0 bg-blue-100 text-blue-800">
 					Ready to Execute
@@ -167,11 +148,11 @@ export function ProposalCard({
 	};
 
 	const isExternalProposer = () => {
-		if (!multisigDetails) return false;
+		if (!proposal.multisig) return false;
 
 		// Check if proposer address is NOT a member by comparing addresses
 		// Members are stored as public keys, need to derive addresses
-		const memberAddresses = multisigDetails.members
+		const memberAddresses = proposal.multisig.members
 			.map((member) => {
 				try {
 					// Derive address from public key
@@ -232,13 +213,10 @@ export function ProposalCard({
 
 					<div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
 						<span>
-							Signature Weight:{' '}
-							{calculateCurrentWeight(
-								proposal,
-								multisigDetails,
-							)}
-							/{getTotalWeight(multisigDetails)}
+							Signature Weight: {proposal.currentWeight}/
+							{proposal.totalWeight}
 						</span>
+
 						<span className="flex items-center gap-1">
 							Address:{' '}
 							{formatAddress(proposal.multisigAddress)}
@@ -287,7 +265,7 @@ export function ProposalCard({
 						</Button>
 					)}
 					{proposal.status === ProposalStatus.PENDING &&
-						userHasSigned() && (
+						!proposal.isPublic && (
 							<Button
 								size="sm"
 								variant="outlineDestructive"

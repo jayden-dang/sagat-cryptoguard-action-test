@@ -1,4 +1,7 @@
-import { PersonalMessages } from '@mysten/sagat';
+import {
+	PersonalMessages,
+	PublicProposal,
+} from '@mysten/sagat';
 import { Transaction } from '@mysten/sui/transactions';
 import {
 	fromBase64,
@@ -36,8 +39,9 @@ import {
 import {
 	getProposalById,
 	getProposalsByMultisigAddress,
+	lookupAndVerifyProposal,
 } from '../services/proposals.service';
-import { getSuiClient, SuiNetwork } from '../utils/client';
+import { getSuiClient } from '../utils/client';
 import { newCursor } from '../utils/pagination';
 import { getPublicKeyFromSerializedSignature } from '../utils/pubKey';
 
@@ -264,32 +268,26 @@ proposalsRouter.post(
 		)
 			throw new ApiAuthError('NotAMultisigMember');
 
-		if (proposal.status !== ProposalStatus.PENDING)
-			return c.json({ verified: true });
+		const result = await lookupAndVerifyProposal(proposal);
 
-		const tx = await getSuiClient(
-			proposal.network as SuiNetwork,
-		).getTransactionBlock({
-			digest: proposal.digest,
-			options: { showEffects: true },
-		});
+		return c.json(result);
+	},
+);
 
-		if (!tx.checkpoint || !tx.effects)
-			throw new ValidationError('Transaction not found');
+// Verify the execution of a proposal.
+proposalsRouter.post(
+	'/:digest/verify-by-digest',
+	async (c) => {
+		const { digest } = c.req.param();
 
-		const isSuccess =
-			tx.effects.status.status === 'success';
+		const proposal =
+			await ProposalByDigestLoader.load(digest);
 
-		await db
-			.update(SchemaProposals)
-			.set({
-				status: isSuccess
-					? ProposalStatus.SUCCESS
-					: ProposalStatus.FAILURE,
-			})
-			.where(eq(SchemaProposals.id, proposal.id));
+		if (!proposal) throw new NotFoundError();
 
-		return c.json({ verified: true });
+		const result = await lookupAndVerifyProposal(proposal);
+
+		return c.json(result);
 	},
 );
 
@@ -326,32 +324,49 @@ proposalsRouter.get(
 	},
 );
 
-proposalsRouter.get(
-	'/digest/:digest',
-	authMiddleware,
-	async (c: Context<AuthEnv>) => {
-		const publicKeys = c.get('publicKeys');
-		const { digest } = c.req.param();
+proposalsRouter.get('/digest/:digest', async (c) => {
+	const { digest } = c.req.param();
 
-		if (!isValidTransactionDigest(digest))
-			throw new CommonError('InvalidDigest');
+	if (!isValidTransactionDigest(digest))
+		throw new CommonError('InvalidDigest');
 
-		const proposal =
-			await ProposalByDigestLoader.load(digest);
+	const proposal =
+		await ProposalByDigestLoader.load(digest);
 
-		if (!proposal) throw new NotFoundError();
+	if (!proposal) throw new NotFoundError();
 
-		if (
-			!(await jwtHasMultisigMemberAccess(
-				proposal.multisigAddress,
-				publicKeys,
-				false,
-			))
-		)
-			throw new ApiAuthError('NotAMultisigMember');
+	const multisig = await getMultisig(
+		proposal.multisigAddress,
+	);
 
-		return c.json(proposal);
-	},
-);
+	const currentWeight = proposal.signatures.reduce(
+		(acc, sig) =>
+			acc +
+			(multisig.members.find(
+				(member) => member.publicKey === sig.publicKey,
+			)?.weight ?? 0),
+		0,
+	);
+
+	// We are hiding the proposers on purpose, as this is not
+	// public information worth sharing.
+	// The multisig composition is public, so that is fine.
+	const proposalWithMultisig: PublicProposal = {
+		...proposal,
+		currentWeight,
+		totalWeight: multisig.threshold,
+		multisig: {
+			address: multisig.address,
+			threshold: multisig.threshold,
+			members: multisig.members.map((member) => ({
+				publicKey: member.publicKey,
+				weight: member.weight,
+				order: member.order,
+			})),
+		},
+	};
+
+	return c.json(proposalWithMultisig);
+});
 
 export default proposalsRouter;
