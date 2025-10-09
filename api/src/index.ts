@@ -7,12 +7,17 @@ import {
 	SUPPORTED_NETWORKS,
 } from './db/env';
 import { appErrorHandler } from './errors';
+import { register } from './metrics';
+import { metricsMiddleware } from './middleware/metrics';
 import addressesRouter from './routes/addresses';
 import authRouter from './routes/auth';
 import multisigRouter from './routes/multisig';
 import proposalsRouter from './routes/proposals';
 
 const app = new Hono();
+
+// Apply metrics middleware to all routes
+app.use('*', metricsMiddleware);
 
 console.log(
 	`Using RPC URLs: ${SUPPORTED_NETWORKS.map((n) => SUI_RPC_URL[n]).join(', ')}`,
@@ -57,6 +62,14 @@ app.get('/', (c) => {
 	return c.text(
 		`Sagat API is up and running on networks: ${SUPPORTED_NETWORKS.join(', ')}`,
 	);
+});
+
+// Metrics endpoint (no CORS, for Grafana Alloy scraping within cluster)
+app.get('/metrics', async (c) => {
+	const metrics = await register.metrics();
+	return c.text(metrics, 200, {
+		'Content-Type': register.contentType,
+	});
 });
 
 app.route('/auth', authRouter);
