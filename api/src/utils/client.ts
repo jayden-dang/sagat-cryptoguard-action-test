@@ -4,7 +4,10 @@ import {
 } from '@mysten/sui/client';
 
 import { SUI_RPC_URL } from '../db/env';
-import { rpcRequestDuration, rpcRequestErrors } from '../metrics';
+import {
+	rpcRequestDuration,
+	rpcRequestErrors,
+} from '../metrics';
 
 export type SuiNetwork =
 	| 'mainnet'
@@ -13,43 +16,68 @@ export type SuiNetwork =
 	| 'localnet';
 
 // Create a wrapper that instruments RPC calls with metrics
-const createInstrumentedClient = (network: SuiNetwork, client: SuiClient) => {
-	const originalMultiGetObjects = client.multiGetObjects.bind(client);
-	const originalGetTransactionBlock = client.getTransactionBlock.bind(client);
+const createInstrumentedClient = (
+	network: SuiNetwork,
+	client: SuiClient,
+) => {
+	const originalMultiGetObjects =
+		client.multiGetObjects.bind(client);
+	const originalGetTransactionBlock =
+		client.getTransactionBlock.bind(client);
 
-	client.multiGetObjects = async (...args: Parameters<typeof originalMultiGetObjects>) => {
+	client.multiGetObjects = async (
+		...args: Parameters<typeof originalMultiGetObjects>
+	) => {
 		const start = Date.now();
 		try {
 			const result = await originalMultiGetObjects(...args);
 			const duration = (Date.now() - start) / 1000;
-			rpcRequestDuration.observe({ network, method: 'multiGetObjects' }, duration);
+			rpcRequestDuration.observe(
+				{ network, method: 'multiGetObjects' },
+				duration,
+			);
 			return result;
 		} catch (error) {
 			const duration = (Date.now() - start) / 1000;
-			rpcRequestDuration.observe({ network, method: 'multiGetObjects' }, duration);
+			rpcRequestDuration.observe(
+				{ network, method: 'multiGetObjects' },
+				duration,
+			);
 			rpcRequestErrors.inc({
 				network,
 				method: 'multiGetObjects',
-				error_type: error instanceof Error ? error.name : 'unknown',
+				error_type:
+					error instanceof Error ? error.name : 'unknown',
 			});
 			throw error;
 		}
 	};
 
-	client.getTransactionBlock = async (...args: Parameters<typeof originalGetTransactionBlock>) => {
+	client.getTransactionBlock = async (
+		...args: Parameters<typeof originalGetTransactionBlock>
+	) => {
 		const start = Date.now();
 		try {
-			const result = await originalGetTransactionBlock(...args);
+			const result = await originalGetTransactionBlock(
+				...args,
+			);
 			const duration = (Date.now() - start) / 1000;
-			rpcRequestDuration.observe({ network, method: 'getTransactionBlock' }, duration);
+			rpcRequestDuration.observe(
+				{ network, method: 'getTransactionBlock' },
+				duration,
+			);
 			return result;
 		} catch (error) {
 			const duration = (Date.now() - start) / 1000;
-			rpcRequestDuration.observe({ network, method: 'getTransactionBlock' }, duration);
+			rpcRequestDuration.observe(
+				{ network, method: 'getTransactionBlock' },
+				duration,
+			);
 			rpcRequestErrors.inc({
 				network,
 				method: 'getTransactionBlock',
-				error_type: error instanceof Error ? error.name : 'unknown',
+				error_type:
+					error instanceof Error ? error.name : 'unknown',
 			});
 			throw error;
 		}
@@ -59,7 +87,9 @@ const createInstrumentedClient = (network: SuiNetwork, client: SuiClient) => {
 };
 
 export const getSuiClient = (network: SuiNetwork) => {
-	const client = new SuiClient({ url: SUI_RPC_URL[network] });
+	const client = new SuiClient({
+		url: SUI_RPC_URL[network],
+	});
 	return createInstrumentedClient(network, client);
 };
 

@@ -1,7 +1,10 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import { dbConnectionPoolSize, dbQueryErrors } from '../metrics';
+import {
+	dbConnectionPoolSize,
+	dbQueryErrors,
+} from '../metrics';
 import {
 	SchemaAddresses,
 	SchemaMultisigMembers,
@@ -23,9 +26,18 @@ const pool = new Pool({
 
 // Update pool metrics
 const updatePoolMetrics = () => {
-	dbConnectionPoolSize.set({ state: 'total' }, pool.totalCount);
-	dbConnectionPoolSize.set({ state: 'idle' }, pool.idleCount);
-	dbConnectionPoolSize.set({ state: 'waiting' }, pool.waitingCount);
+	dbConnectionPoolSize.set(
+		{ state: 'total' },
+		pool.totalCount,
+	);
+	dbConnectionPoolSize.set(
+		{ state: 'idle' },
+		pool.idleCount,
+	);
+	dbConnectionPoolSize.set(
+		{ state: 'waiting' },
+		pool.waitingCount,
+	);
 };
 
 // Update metrics every 10 seconds
@@ -37,7 +49,10 @@ updatePoolMetrics();
 // Handle pool errors
 pool.on('error', (err) => {
 	console.error('Unexpected error on idle client', err);
-	dbQueryErrors.inc({ operation: 'pool', table: 'unknown' });
+	dbQueryErrors.inc({
+		operation: 'pool',
+		table: 'unknown',
+	});
 	process.exit(-1);
 });
 

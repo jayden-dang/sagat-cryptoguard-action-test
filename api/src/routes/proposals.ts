@@ -123,13 +123,19 @@ proposalsRouter.post('/', async (c) => {
 				publicKey: pubKey.toSuiPublicKey(),
 				signature,
 			});
-			multisigProposalEvents.inc({ network, event_type: 'signature_added' });
+			multisigProposalEvents.inc({
+				network,
+				event_type: 'signature_added',
+			});
 		}
 
 		return proposal[0];
 	});
 
-	multisigProposalEvents.inc({ network, event_type: 'proposal_created' });
+	multisigProposalEvents.inc({
+		network,
+		event_type: 'proposal_created',
+	});
 
 	return c.json(proposal, 201);
 });
@@ -190,7 +196,10 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
 		.values(signatureObject);
 	proposal.signatures.push(signatureObject);
 
-	multisigProposalEvents.inc({ network: proposal.network, event_type: 'signature_added' });
+	multisigProposalEvents.inc({
+		network: proposal.network,
+		event_type: 'signature_added',
+	});
 
 	const multisig = await getMultisig(
 		proposal.multisigAddress,
@@ -246,7 +255,10 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 		.set({ status: ProposalStatus.CANCELLED })
 		.where(eq(SchemaProposals.id, proposal.id));
 
-	multisigProposalEvents.inc({ network: proposal.network, event_type: 'proposal_cancelled' });
+	multisigProposalEvents.inc({
+		network: proposal.network,
+		event_type: 'proposal_cancelled',
+	});
 
 	return c.json({
 		message: 'Proposal cancelled successfully',
@@ -299,7 +311,9 @@ proposalsRouter.post(
 
 		multisigProposalEvents.inc({
 			network: proposal.network,
-			event_type: isSuccess ? 'proposal_success' : 'proposal_failure'
+			event_type: isSuccess
+				? 'proposal_success'
+				: 'proposal_failure',
 		});
 
 		return c.json({ verified: true });

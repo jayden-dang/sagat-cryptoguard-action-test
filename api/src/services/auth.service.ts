@@ -11,7 +11,7 @@ import { jwtVerify, SignJWT } from 'jose';
 import { LIMITS } from '../constants/limits';
 import { JWT_SECRET } from '../db/env';
 import { ValidationError } from '../errors';
-import { authAttempts, activeJwtTokens } from '../metrics';
+import { activeJwtTokens, authAttempts } from '../metrics';
 import {
 	getPublicKeyFromSerializedSignature,
 	parsePublicKey,
