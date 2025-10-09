@@ -87,8 +87,10 @@ export function ProposalPreview({
 								<div className="flex items-center gap-1 text-sm text-gray-600">
 									<Clock className="w-4 h-4" />
 									Cannot sign:{' '}
-									{formatAddress(currentWallet?.address || '')} is
-									not a member of the multisig
+									{formatAddress(
+										currentWallet?.address || '',
+									)}{' '}
+									is not a member of the multisig
 								</div>
 							)}
 						</>
