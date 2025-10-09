@@ -12,58 +12,55 @@ export type SuiNetwork =
 	| 'devnet'
 	| 'localnet';
 
-// Wrap SuiClient to add metrics
-class MetricsSuiClient extends SuiClient {
-	private network: SuiNetwork;
+// Create a wrapper that instruments RPC calls with metrics
+const createInstrumentedClient = (network: SuiNetwork, client: SuiClient) => {
+	const originalMultiGetObjects = client.multiGetObjects.bind(client);
+	const originalGetTransactionBlock = client.getTransactionBlock.bind(client);
 
-	constructor(network: SuiNetwork, url: string) {
-		super({ url });
-		this.network = network;
-	}
-
-	private async wrapWithMetrics<T>(
-		method: string,
-		fn: () => Promise<T>,
-	): Promise<T> {
+	client.multiGetObjects = async (...args: Parameters<typeof originalMultiGetObjects>) => {
 		const start = Date.now();
 		try {
-			const result = await fn();
+			const result = await originalMultiGetObjects(...args);
 			const duration = (Date.now() - start) / 1000;
-			rpcRequestDuration.observe(
-				{ network: this.network, method },
-				duration,
-			);
+			rpcRequestDuration.observe({ network, method: 'multiGetObjects' }, duration);
 			return result;
 		} catch (error) {
 			const duration = (Date.now() - start) / 1000;
-			rpcRequestDuration.observe(
-				{ network: this.network, method },
-				duration,
-			);
+			rpcRequestDuration.observe({ network, method: 'multiGetObjects' }, duration);
 			rpcRequestErrors.inc({
-				network: this.network,
-				method,
+				network,
+				method: 'multiGetObjects',
 				error_type: error instanceof Error ? error.name : 'unknown',
 			});
 			throw error;
 		}
-	}
+	};
 
-	override async multiGetObjects(...args: Parameters<SuiClient['multiGetObjects']>) {
-		return this.wrapWithMetrics('multiGetObjects', () =>
-			super.multiGetObjects(...args),
-		);
-	}
+	client.getTransactionBlock = async (...args: Parameters<typeof originalGetTransactionBlock>) => {
+		const start = Date.now();
+		try {
+			const result = await originalGetTransactionBlock(...args);
+			const duration = (Date.now() - start) / 1000;
+			rpcRequestDuration.observe({ network, method: 'getTransactionBlock' }, duration);
+			return result;
+		} catch (error) {
+			const duration = (Date.now() - start) / 1000;
+			rpcRequestDuration.observe({ network, method: 'getTransactionBlock' }, duration);
+			rpcRequestErrors.inc({
+				network,
+				method: 'getTransactionBlock',
+				error_type: error instanceof Error ? error.name : 'unknown',
+			});
+			throw error;
+		}
+	};
 
-	override async getTransactionBlock(...args: Parameters<SuiClient['getTransactionBlock']>) {
-		return this.wrapWithMetrics('getTransactionBlock', () =>
-			super.getTransactionBlock(...args),
-		);
-	}
-}
+	return client;
+};
 
 export const getSuiClient = (network: SuiNetwork) => {
-	return new MetricsSuiClient(network, SUI_RPC_URL[network]);
+	const client = new SuiClient({ url: SUI_RPC_URL[network] });
+	return createInstrumentedClient(network, client);
 };
 
 // Query a list of objects

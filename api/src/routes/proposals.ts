@@ -22,7 +22,7 @@ import {
 	ValidationError,
 } from '../errors';
 import { ProposalByDigestLoader } from '../loaders/proposals.loader';
-import { multisigTransactions, multisigSignatures } from '../metrics';
+import { multisigProposalEvents, updateMultisigMetrics } from '../metrics';
 import { validatePersonalMessage } from '../services/addresses.service';
 import {
 	AuthEnv,
@@ -123,13 +123,16 @@ proposalsRouter.post('/', async (c) => {
 				publicKey: pubKey.toSuiPublicKey(),
 				signature,
 			});
-			multisigSignatures.inc({ network });
+			multisigProposalEvents.inc({ network, event_type: 'signature_added' });
 		}
 
 		return proposal[0];
 	});
 
-	multisigTransactions.inc({ network, status: 'pending' });
+	multisigProposalEvents.inc({ network, event_type: 'proposal_created' });
+
+	// Update gauge metrics to reflect new state
+	updateMultisigMetrics();
 
 	return c.json(proposal, 201);
 });
@@ -190,7 +193,10 @@ proposalsRouter.post('/:proposalId/vote', async (c) => {
 		.values(signatureObject);
 	proposal.signatures.push(signatureObject);
 
-	multisigSignatures.inc({ network: proposal.network });
+	multisigProposalEvents.inc({ network: proposal.network, event_type: 'signature_added' });
+
+	// Update gauge metrics to reflect new signature
+	updateMultisigMetrics();
 
 	const multisig = await getMultisig(
 		proposal.multisigAddress,
@@ -246,7 +252,10 @@ proposalsRouter.post('/:proposalId/cancel', async (c) => {
 		.set({ status: ProposalStatus.CANCELLED })
 		.where(eq(SchemaProposals.id, proposal.id));
 
-	multisigTransactions.inc({ network: proposal.network, status: 'cancelled' });
+	multisigProposalEvents.inc({ network: proposal.network, event_type: 'proposal_cancelled' });
+
+	// Update gauge metrics to reflect cancelled state
+	updateMultisigMetrics();
 
 	return c.json({
 		message: 'Proposal cancelled successfully',
@@ -297,10 +306,13 @@ proposalsRouter.post(
 			})
 			.where(eq(SchemaProposals.id, proposal.id));
 
-		multisigTransactions.inc({
+		multisigProposalEvents.inc({
 			network: proposal.network,
-			status: isSuccess ? 'success' : 'failure'
+			event_type: isSuccess ? 'proposal_success' : 'proposal_failure'
 		});
+
+		// Update gauge metrics to reflect success/failure state
+		updateMultisigMetrics();
 
 		return c.json({ verified: true });
 	},
