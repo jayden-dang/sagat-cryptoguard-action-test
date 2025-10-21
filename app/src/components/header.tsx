@@ -7,6 +7,7 @@ import { useApiAuth } from '../contexts/ApiAuthContext';
 import { useInvitations } from '../hooks/useInvitations';
 import { CustomWalletButton } from './CustomWalletButton';
 import { Logo } from './Logo';
+import { ToolsDropdown } from './ToolsDropdown';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import {
@@ -32,6 +33,12 @@ const NavigationLinks = ({
 
 	return (
 		<>
+			{!mobile && (
+				<ToolsDropdown
+					mobile={false}
+					onNavigate={onNavigate}
+				/>
+			)}
 			{currentAccount && isCurrentAddressAuthenticated && (
 				<>
 					{/* Invitations button */}
@@ -78,13 +85,22 @@ const NavigationLinks = ({
 					</Link>
 				</>
 			)}
+			{mobile && (
+				<>
+					<p className="text-sm text-gray-500 font-medium px-2">
+						Tools
+					</p>
+					<ToolsDropdown
+						mobile={true}
+						onNavigate={onNavigate}
+					/>
+				</>
+			)}
 		</>
 	);
 };
 
 export function Header() {
-	const currentAccount = useCurrentAccount();
-	const { isCurrentAddressAuthenticated } = useApiAuth();
 	const { data: invitations } = useInvitations();
 	const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -112,46 +128,43 @@ export function Header() {
 				<div className="flex md:hidden items-center gap-2">
 					<CustomWalletButton variant="header" />
 
-					{currentAccount &&
-						isCurrentAddressAuthenticated && (
-							<Sheet
-								open={sheetOpen}
-								onOpenChange={setSheetOpen}
+					<Sheet
+						open={sheetOpen}
+						onOpenChange={setSheetOpen}
+					>
+						<SheetTrigger asChild>
+							<Button
+								variant="outline"
+								size="sm"
+								className="relative"
 							>
-								<SheetTrigger asChild>
-									<Button
-										variant="outline"
+								<Menu className="w-4 h-4" />
+								{pendingCount > 0 && (
+									<Label
+										variant="warning"
 										size="sm"
-										className="relative"
+										className="absolute -top-1 -right-1 bg-orange-500 text-white h-4 w-4 p-0 justify-center"
 									>
-										<Menu className="w-4 h-4" />
-										{pendingCount > 0 && (
-											<Label
-												variant="warning"
-												size="sm"
-												className="absolute -top-1 -right-1 bg-orange-500 text-white h-4 w-4 p-0 justify-center"
-											>
-												{pendingCount}
-											</Label>
-										)}
-									</Button>
-								</SheetTrigger>
-								<SheetContent
-									side="right"
-									className="w-[300px] sm:w-[350px]"
-								>
-									<SheetHeader>
-										<SheetTitle>Navigation</SheetTitle>
-									</SheetHeader>
-									<div className="mt-8 flex flex-col gap-4 px-2">
-										<NavigationLinks
-											mobile
-											onNavigate={() => setSheetOpen(false)}
-										/>
-									</div>
-								</SheetContent>
-							</Sheet>
-						)}
+										{pendingCount}
+									</Label>
+								)}
+							</Button>
+						</SheetTrigger>
+						<SheetContent
+							side="right"
+							className="w-[300px] sm:w-[350px]"
+						>
+							<SheetHeader>
+								<SheetTitle>Navigation</SheetTitle>
+							</SheetHeader>
+							<div className="mt-8 flex flex-col gap-4 px-2">
+								<NavigationLinks
+									mobile
+									onNavigate={() => setSheetOpen(false)}
+								/>
+							</div>
+						</SheetContent>
+					</Sheet>
 				</div>
 			</div>
 		</div>

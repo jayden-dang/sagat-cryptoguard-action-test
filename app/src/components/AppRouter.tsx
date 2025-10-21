@@ -8,6 +8,7 @@ import {
 	useLocation,
 } from 'react-router-dom';
 
+import { TOOLS } from '../config/tools';
 import { useApiAuth } from '../contexts/ApiAuthContext';
 import { AuthPrompt } from './AuthPrompt';
 import { CreateMultisigPage } from './CreateMultisigPage';
@@ -19,6 +20,7 @@ import { SmartDashboard } from './SmartDashboard';
 import { AssetsTab } from './tabs/AssetsTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { ProposalsTab } from './tabs/ProposalsTab';
+import { ToolsPage } from './ToolsPage';
 import { Loading } from './ui/loading';
 
 type AuthLevel = 'public' | 'wallet' | 'full';
@@ -31,6 +33,17 @@ interface RouteConfig {
 }
 
 const routes: RouteConfig[] = [
+	{
+		path: '/tools',
+		element: <ToolsPage />,
+		authLevel: 'public',
+	},
+	// Dynamically generate routes for all tools
+	...TOOLS.map((tool) => ({
+		path: tool.path,
+		element: <ToolsPage />,
+		authLevel: 'public' as AuthLevel,
+	})),
 	{
 		path: '/proposals',
 		element: <ProposalDetailPage />,
