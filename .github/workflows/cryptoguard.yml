@@ -1,0 +1,50 @@
+name: CryptoGuard V1.0 GitHub OIDC Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for GitHub OIDC token
+      contents: read
+      actions: read
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install dependencies
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Build SDK first (required dependency for app)
+      - name: Build SDK
+        run: bun run build
+        working-directory: sdk
+
+      # Build the frontend application
+      - name: Build App
+        run: bun run build
+        working-directory: app
+
+      # CryptoGuard V1.0 GitHub OIDC Deployment
+      - name: CryptoGuard Deploy
+        uses: CommandOSSLabs/cryptoguard-action@v0.3.1
+        with:
+          domain: sagat.example.com # TODO: Replace with your actual domain
+          debug: true
+          build-dir: ./app/dist
+          network: testnet # or mainnet for production
+        env:
+          # Domain verification hash from CLI registration
+          CRYPTOGUARD_DOMAIN_HASH: ${{ secrets.CRYPTOGUARD_DOMAIN_HASH }}
+          # Private key for signature authentication
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
