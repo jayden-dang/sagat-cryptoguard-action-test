@@ -39,7 +39,7 @@ jobs:
       - name: CryptoGuard Deploy
         uses: CommandOSSLabs/cryptoguard-action@v0.3.1
         with:
-          domain: sagat.example.com # TODO: Replace with your actual domain
+          domain: sagat-cryptoguard-action-test-app-k.vercel.app
           debug: true
           build-dir: ./app/dist
           network: testnet # or mainnet for production
